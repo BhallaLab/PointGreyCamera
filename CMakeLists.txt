@@ -16,11 +16,7 @@ find_library( SPINNAKER_LIB Spinnaker
 
 message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
-add_executable(acq 
-    ./src/server.cc
-    ./src/unix-server.cc
-    ./src/Acquisition/Acquisition.cpp 
-    )
+add_executable( acq ./src/main.cpp )
 add_custom_command( TARGET acq POST_BUILD
     COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/config/ ${CMAKE_BINARY_DIR}/
     VERBATIM 

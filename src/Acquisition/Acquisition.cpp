@@ -1,45 +1,3 @@
-//=============================================================================
-// Copyright © 2015 Point Grey Research, Inc. All Rights Reserved.
-//
-// This software is the confidential and proprietary information of
-// Point Grey Research, Inc. ("Confidential Information"). You shall not
-// disclose such Confidential Information and shall use it only in
-// accordance with the terms of the "License Agreement" that you
-// entered into with PGR in connection with this software.
-//
-// UNLESS OTHERWISE SET OUT IN THE LICENSE AGREEMENT, THIS SOFTWARE IS
-// PROVIDED ON AN “AS-IS” BASIS AND POINT GREY RESEARCH INC. MAKES NO
-// REPRESENTATIONS OR WARRANTIES ABOUT THE SOFTWARE, EITHER EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY IMPLIED WARRANTIES OR
-// CONDITIONS OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR
-// NON-INFRINGEMENT. POINT GREY RESEARCH INC. SHALL NOT BE LIABLE FOR ANY
-// DAMAGES, INCLUDING BUT NOT LIMITED TO ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, PUNITIVE, OR CONSEQUENTIAL DAMAGES, OR ANY LOSS OF PROFITS,
-// REVENUE, DATA OR DATA USE, ARISING OUT OF OR IN CONNECTION WITH THIS
-// SOFTWARE OR OTHERWISE SUFFERED BY YOU AS A RESULT OF USING, MODIFYING
-// OR DISTRIBUTING THIS SOFTWARE OR ITS DERIVATIVES.
-//=============================================================================
-
-/**
- *	@example Acquisition.cpp
- *
- *	@brief Acquisition.cpp shows how to acquire images. It relies on
- *	information provided in the Enumeration example. Also, check out the
- *	ExceptionHandling and NodeMapInfo examples if you haven't already.
- *	ExceptionHandling shows the handling of standard and Spinnaker exceptions
- *	while NodeMapInfo explores retrieving information from various node types.
- *
- *	This example touches on the preparation and cleanup of a camera just before
- *	and just after the acquisition of images. Image retrieval and conversion,
- *	grabbing image data, and saving images are all covered as well.
- *
- *	Once comfortable with Acquisition, we suggest checking out
- *	AcquisitionMultipleCamera, NodeMapCallback, or SaveToAvi.
- *	AcquisitionMultipleCamera demonstrates simultaneously acquiring images from
- *	a number of cameras, NodeMapCallback serves as a good introduction to
- *	programming with callbacks and events, and SaveToAvi exhibits video creation.
- */
-
 #include "Spinnaker.h"
 #include "SpinGenApi/SpinnakerGenApi.h"
 #include <iostream>
@@ -390,7 +348,6 @@ int main(int /*argc*/, char** /*argv*/)
     //
     CameraPtr pCam = NULL;
 
-    // Run example on each camera
     for (unsigned int i = 0; i < numCameras; i++)
     {
         // Select camera

@@ -26,3 +26,12 @@ add_custom_command( TARGET acq POST_BUILD
     )
 
 target_link_libraries(acq ${SPINNAKER_LIB} ${Boost_LIBRARIES})
+
+
+enable_testing( )
+
+add_executable( test-socket ${CMAKE_SOURCE_DIR}/tests/test_socket.cc )
+
+add_test( test_socket test-socket )
+
+

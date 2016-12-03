@@ -24,13 +24,17 @@ def main( ):
     s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
     while True:
         if os.path.exists( '/tmp/echo_socket' ):
+            s.connect( '/tmp/echo_socket' )
             break
         else:
             time.sleep( 1 )
             print( '.', end='')
             sys.stdout.flush( )
     while True:
-        s.send( random.random( ) )
+        # Read data here.
+        data = s.recv( 1024 )
+        print( data )
+
 
 if __name__ == '__main__':
     main()

@@ -18,18 +18,38 @@
  * =====================================================================================
  */
 
+#include <iostream>
 #include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <sys/un.h>
+#include <cstdlib>
+#include <csignal>
+
+using namespace std;
 
 #define SOCK_PATH "/tmp/echo_socket"
 
+void sig_handler( int s )
+{
+    cout << "Got keyboard interrupt. Removing socket" << endl;
+    remove( SOCK_PATH );
+    exit( 1 );
+}
+
+void write_data( int socket )
+{
+    char buf[50] = "Heellow duniya waalo";
+    cout << "Writing some data" << endl;
+    int n = write( socket, (void *) buf,  10 );
+}
+
 int main(void)
 {
+    signal( SIGINT, sig_handler );
     int s, s2, len;
     struct sockaddr_un local, remote;
     char str[100];
@@ -56,17 +76,20 @@ int main(void)
 
     for(;;) {
         int done, n;
-        printf("Waiting for a connection...\n");
+        cout << "Waiting for a connection..." << endl;
         socklen_t t = sizeof(remote);
         if ((s2 = accept(s, (struct sockaddr *)&remote, &t)) == -1) {
             perror("accept");
             exit(1);
         }
 
-        printf("Connected.\n");
+        cout << "Connected." << endl;
 
         done = 0;
         do {
+            write_data( s2 );
+
+        #if 0
             n = recv(s2, str, 100, 0);
             if (n <= 0) {
                 if (n < 0) perror("recv");
@@ -78,6 +101,8 @@ int main(void)
                     perror("send");
                     done = 1;
                 }
+            cout << "Recieved : " << str << endl;
+#endif 
         } while (!done);
 
         shutdown(s2, 0);

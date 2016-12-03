@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <error.h>
+#include "Streamer.hpp"
 
 #define SOCK_PATH "blink"
 
@@ -262,6 +263,21 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 // comments on preparing and cleaning up the system.
 int main(int /*argc*/, char** /*argv*/)
 {
+    // Create socket 
+    try
+    {
+        std::remove( SOCK_PATH );
+        boost::asio::io_service io_service;
+        server s( io_service, SOCK_PATH );
+    }
+    catch( std::exception & e)
+    {
+        std::cerr << "What : " << e.what( ) << endl;
+        exit(-1);
+    }
+
+
+
     int result = 0;
 
     // Print application build information
@@ -302,6 +318,8 @@ int main(int /*argc*/, char** /*argv*/)
         perror("socket");
         exit(1);
     }
+    else
+        cout << "Socket is open " << endl;
 
     local.sun_family = AF_UNIX;
     strcpy(local.sun_path, SOCK_PATH);
@@ -312,6 +330,8 @@ int main(int /*argc*/, char** /*argv*/)
         perror("bind");
         exit(1);
     }
+    else
+        std::cout << "Bound to file" << std::endl;
 
 #if 0
     if (listen(s, 5) == -1)

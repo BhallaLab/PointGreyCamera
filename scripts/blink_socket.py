@@ -29,20 +29,22 @@ def main( ):
     s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
     while True:
         if os.path.exists( sock_name_ ):
-            s.connect( sock_name_ )
-            break
+            try:
+                s.connect( sock_name_ )
+                break
+            except Exception as e:
+                pass
         else:
             time.sleep( 1 )
             print( '.', end='')
             sys.stdout.flush( )
     while True:
         # Read data here.
-        data = s.recv( 2048 )
+        data = s.recv( 10 * 1024 )
         if not data:
-            if not poll_socket( ):
-                break
-        print( '.', end='' )
-        # print( data )
+            print('no data' )
+            break
+        print( len(data ))
 
 
 if __name__ == '__main__':

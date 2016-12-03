@@ -116,13 +116,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
         gcstring deviceSerialNumber("");
         CStringPtr ptrStringSerial = nodeMapTLDevice.GetNode("DeviceSerialNumber");
         if (IsAvailable(ptrStringSerial) && IsReadable(ptrStringSerial))
-        {
             deviceSerialNumber = ptrStringSerial->GetValue();
-            //cout << "Device serial number retrieved as " << deviceSerialNumber << "..." << endl;
-        }
 
-        // Retrieve, convert, and save images
-        //cout << "Acquiring " << numFrames << " images..." << endl;
         for (unsigned int imageCnt = 0; imageCnt < numFrames; imageCnt++)
         {
             try
@@ -141,6 +136,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
                         std::cout << "Failed to write frame to socket " << std::endl;
                         std::cout << "\tThe error was : " << strerror(errno) << std::endl;
                     }
+                    //else
+                        //cout << "Wrote " << size << " data" << endl;
                 }
             }
             catch (Spinnaker::Exception &e)
@@ -150,6 +147,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
             }
         }
     
+        cout << "End loop " << endl;
         pCam->EndAcquisition();
     }
     catch (Spinnaker::Exception &e)
@@ -235,7 +233,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         auto start = system_clock::now( );
         while( true )
         {
-            int nFrames = floor( fps_ ) + 1;
+            int nFrames = 5 * floor( fps_ );
             result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket, nFrames );
             duration<double> elapsedSecs = system_clock::now( ) - start;
             double fps = ( float ) total_frames_ / elapsedSecs.count( );
@@ -297,11 +295,11 @@ int main(int /*argc*/, char** /*argv*/)
 
     while( true )
     {
-        for (unsigned int i = 0; i < numCameras; i++)
-        {
-            pCam = camList.GetByIndex(i);
-            result = result | RunSingleCamera(pCam, client);
-        }
+        pCam = camList.GetByIndex( 0 );
+        if( pCam )
+            result = RunSingleCamera(pCam, client);
+        else
+            break;
     }
 
     pCam = NULL;
@@ -312,6 +310,5 @@ int main(int /*argc*/, char** /*argv*/)
     // Release system
     system->ReleaseInstance();
     std::cout << "All done" << std::endl;
-
-    return result;
+    return 0;
 }

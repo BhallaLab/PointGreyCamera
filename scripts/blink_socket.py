@@ -20,11 +20,16 @@ import socket
 import random
 import time
 
+sock_name_ = '/tmp/socket_blinky'
+
+def poll_socket( ):
+    return os.path.exists( sock_name_ )
+
 def main( ):
     s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
     while True:
-        if os.path.exists( '/tmp/echo_socket' ):
-            s.connect( '/tmp/echo_socket' )
+        if os.path.exists( sock_name_ ):
+            s.connect( sock_name_ )
             break
         else:
             time.sleep( 1 )
@@ -32,8 +37,12 @@ def main( ):
             sys.stdout.flush( )
     while True:
         # Read data here.
-        data = s.recv( 1024 )
-        print( data )
+        data = s.recv( 2048 )
+        if not data:
+            if not poll_socket( ):
+                break
+        print( '.', end='' )
+        # print( data )
 
 
 if __name__ == '__main__':

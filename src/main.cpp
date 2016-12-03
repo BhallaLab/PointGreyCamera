@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <error.h>
 
 #define SOCK_PATH "blink"
 
@@ -13,18 +14,8 @@ using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
 using namespace std;
 
-/**
- * @brief Acquire numFrames frames from camera.
- *
- * @param pCam
- * @param nodeMap
- * @param 
- * @param 
- *
- * @return  ??
- */
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
-        , const sockaddr_un* pSock
+        , int socket
         , size_t numFrames = 10
         )
 {
@@ -137,7 +128,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
 
                     size_t height = pResultImage->GetHeight();
 
-                    cout << "Grabbed image " << imageCnt << ", width = " << width << ", height = " << height << endl;
+                    cout << "Grabbed image " << imageCnt << ", width = " 
+                        << width << ", height = " << height << endl;
 
                     //
                     // Convert image to mono 8
@@ -152,40 +144,18 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
                     // optional parameter.
                     //
                     ImagePtr convertedImage = pResultImage->Convert(PixelFormat_Mono8, HQ_LINEAR);
-
-                    // Create a unique filename
-                    ostringstream filename;
-
-                    filename << "Acquisition-";
-                    if (deviceSerialNumber != "")
-                        filename << deviceSerialNumber.c_str() << "-";
-
-                    filename << imageCnt << ".jpg";
-
-                    //
-                    // Save image
-                    //
-                    // *** NOTES ***
-                    // The standard practice of the examples is to use device
-                    // serial numbers to keep images of one device from
-                    // overwriting those of another.
-                    convertedImage->Save(filename.str().c_str());
-
-                    // Write this to socket.
-
-                    cout << "Image saved at " << filename.str() << endl;
+                    
+                    // And write to socket
+                    int size = width * height;
+                    int status = write( socket, (void *)&size, sizeof( int ) );
+                    if( status == -1 )
+                    {
+                        std::cout << "Failed to write frame to socket " << std::endl;
+                        std::cout << "\tThe error was : " << strerror(errno) << std::endl;
+                    }
+                    else
+                        std::cout << "Wrote data to socket" << std::endl;
                 }
-
-                //
-                // Release image
-                //
-                // *** NOTES ***
-                // Images retrieved directly from the camera (i.e. non-converted
-                // images) need to be released in order to keep from filling the
-                // buffer.
-                //
-                pResultImage->Release();
-
                 cout << endl;
             }
             catch (Spinnaker::Exception &e)
@@ -256,7 +226,7 @@ int PrintDeviceInfo(INodeMap & nodeMap)
 
 // This function acts as the body of the example; please see NodeMapInfo example
 // for more in-depth comments on setting up cameras.
-int RunSingleCamera(CameraPtr pCam, const sockaddr_un* pSocket)
+int RunSingleCamera(CameraPtr pCam, int socket)
 {
     int result = 0;
 
@@ -274,7 +244,7 @@ int RunSingleCamera(CameraPtr pCam, const sockaddr_un* pSocket)
         INodeMap & nodeMap = pCam->GetNodeMap();
 
         // Acquire images
-        result = result | AcquireImages(pCam, nodeMap, nodeMapTLDevice, pSocket, 10);
+        result = result | AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket, 10);
 
         // Deinitialize camera
         pCam->DeInit();
@@ -410,7 +380,7 @@ int main(int /*argc*/, char** /*argv*/)
         cout << endl << "Running example for camera " << i << "..." << endl;
 
         // Run example
-        result = result | RunSingleCamera(pCam, &local);
+        result = result | RunSingleCamera(pCam, s);
 
         cout << "Camera " << i << " example complete..." << endl << endl;
     }

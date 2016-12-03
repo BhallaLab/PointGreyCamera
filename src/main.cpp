@@ -19,6 +19,7 @@ using namespace Spinnaker::GenICam;
 using namespace std;
 
 int total_frames_ = 0;
+float fps_ = 0.0;                               /* Frame per second. */
 
 void sig_handler( int s )
 {
@@ -79,8 +80,9 @@ int create_socket( )
 
 }
 
-int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
-        , int socket , size_t numFrames = 10 )
+int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
+        , INodeMap & nodeMapTLDevice
+        , int socket , size_t numFrames = 100 )
 {
     int result = 0;
     try
@@ -118,7 +120,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
             deviceSerialNumber = ptrStringSerial->GetValue();
             //cout << "Device serial number retrieved as " << deviceSerialNumber << "..." << endl;
         }
-        cout << endl;
 
         // Retrieve, convert, and save images
         //cout << "Acquiring " << numFrames << " images..." << endl;
@@ -140,8 +141,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
                         std::cout << "Failed to write frame to socket " << std::endl;
                         std::cout << "\tThe error was : " << strerror(errno) << std::endl;
                     }
-                    else
-                        cout << 'f';
                 }
             }
             catch (Spinnaker::Exception &e)
@@ -188,6 +187,7 @@ int PrintDeviceInfo(INodeMap & nodeMap)
                 cout << (IsReadable(pValue) ? pValue->ToString() : "Node not readable");
                 cout << endl;
             }
+
         }
         else
         {
@@ -208,7 +208,6 @@ int PrintDeviceInfo(INodeMap & nodeMap)
 int RunSingleCamera(CameraPtr pCam, int socket)
 {
     int result = 0;
-    float fps = 0.0;
 
     try
     {
@@ -222,13 +221,24 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 
         // Retrieve GenICam nodemap
         INodeMap & nodeMap = pCam->GetNodeMap();
-        auto start = system_clock::now( );
 
+        CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
+        if (!IsAvailable(ptrAcquisitionFrameRate) || 
+                !IsReadable(ptrAcquisitionFrameRate)) 
+            cout << "Unable to retrieve frame rate. " << endl << endl;
+        else
+        {
+            fps_ = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
+            cout << "Frame rate is " << fps_ << endl;
+        }
+
+        auto start = system_clock::now( );
         while( true )
         {
-            result = result | AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket, 50);
+            int nFrames = floor( fps_ ) + 1;
+            result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket, nFrames );
             duration<double> elapsedSecs = system_clock::now( ) - start;
-            fps = ( float ) total_frames_ / elapsedSecs.count( );
+            double fps = ( float ) total_frames_ / elapsedSecs.count( );
             cout << "FPS : " << fps << endl;
         }
 

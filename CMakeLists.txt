@@ -9,7 +9,9 @@ find_package( Boost REQUIRED COMPONENTS system thread )
 
 set(SPINNAKER_SRC_DIR ${CMAKE_SOURCE_DIR}/spinnaker_1_0_0_270_amd64)
 
-add_definitions( -std=c++11 -Wall -O2 )
+set(CMAKE_BUILD_TYPE Release)
+
+add_definitions( -std=c++11 -Wall )
 add_definitions( -D LINUX )
 
 find_library( SPINNAKER_LIB Spinnaker 

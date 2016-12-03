@@ -13,42 +13,30 @@ using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
 using namespace std;
 
-// This function acquires and saves 10 images from a device.
-int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice)
+/**
+ * @brief Acquire numFrames frames from camera.
+ *
+ * @param pCam
+ * @param nodeMap
+ * @param 
+ * @param 
+ *
+ * @return  ??
+ */
+int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
+        , const sockaddr_un* pSock
+        , size_t numFrames = 10
+        )
 {
     int result = 0;
-
     cout << endl << endl << "*** IMAGE ACQUISITION ***" << endl << endl;
-
     try
     {
-        //
-        // Set acquisition mode to continuous
-        //
-        // *** NOTES ***
-        // Because the example acquires and saves 10 images, setting acquisition
-        // mode to continuous lets the example finish. If set to single frame
-        // or multiframe (at a lower number of images), the example would just
-        // hang. This would happen because the example has been written to
-        // acquire 10 images while the camera would have been programmed to
-        // retrieve less than that.
-        //
-        // Setting the value of an enumeration node is slightly more complicated
-        // than other node types. Two nodes must be retrieved: first, the
-        // enumeration node is retrieved from the nodemap; and second, the entry
-        // node is retrieved from the enumeration node. The integer value of the
-        // entry node is then set as the new value of the enumeration node.
-        //
-        // Notice that both the enumeration and the entry nodes are checked for
-        // availability and readability/writability. Enumeration nodes are
-        // generally readable and writable whereas their entry nodes are only
-        // ever readable.
-        //
-        // Retrieve enumeration node from nodemap
         CEnumerationPtr ptrAcquisitionMode = nodeMap.GetNode("AcquisitionMode");
         if (!IsAvailable(ptrAcquisitionMode) || !IsWritable(ptrAcquisitionMode))
         {
-            cout << "Unable to set acquisition mode to continuous (enum retrieval). Aborting..." << endl << endl;
+            cout << "Unable to set acquisition mode to continuous " 
+                << " (enum retrieval). Aborting..." << endl << endl;
             return -1;
         }
 
@@ -56,7 +44,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
         CEnumEntryPtr ptrAcquisitionModeContinuous = ptrAcquisitionMode->GetEntryByName("Continuous");
         if (!IsAvailable(ptrAcquisitionModeContinuous) || !IsReadable(ptrAcquisitionModeContinuous))
         {
-            cout << "Unable to set acquisition mode to continuous (entry retrieval). Aborting..." << endl << endl;
+            cout << "Unable to set acquisition mode to continuous " << 
+                " (entry retrieval). Aborting..." << endl << endl;
             return -1;
         }
 
@@ -65,7 +54,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
 
         // Set integer value from entry node as new value of enumeration node
         ptrAcquisitionMode->SetIntValue(acquisitionModeContinuous);
-
         cout << "Acquisition mode set to continuous..." << endl;
 
         //
@@ -83,7 +71,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
         //
         pCam->BeginAcquisition();
 
-        cout << "Acquiring images..." << endl;
 
         //
         // Retrieve device serial number for filename
@@ -92,21 +79,19 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
         // The device serial number is retrieved in order to keep cameras from
         // overwriting one another. Grabbing image IDs could also accomplish
         // this.
-        //
+
         gcstring deviceSerialNumber("");
         CStringPtr ptrStringSerial = nodeMapTLDevice.GetNode("DeviceSerialNumber");
         if (IsAvailable(ptrStringSerial) && IsReadable(ptrStringSerial))
         {
             deviceSerialNumber = ptrStringSerial->GetValue();
-
             cout << "Device serial number retrieved as " << deviceSerialNumber << "..." << endl;
         }
         cout << endl;
 
         // Retrieve, convert, and save images
-        const unsigned int k_numImages = 10;
-
-        for (unsigned int imageCnt = 0; imageCnt < k_numImages; imageCnt++)
+        cout << "Acquiring " << numFrames << " images..." << endl;
+        for (unsigned int imageCnt = 0; imageCnt < numFrames; imageCnt++)
         {
             try
             {
@@ -173,9 +158,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
 
                     filename << "Acquisition-";
                     if (deviceSerialNumber != "")
-                    {
                         filename << deviceSerialNumber.c_str() << "-";
-                    }
+
                     filename << imageCnt << ".jpg";
 
                     //
@@ -185,8 +169,9 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
                     // The standard practice of the examples is to use device
                     // serial numbers to keep images of one device from
                     // overwriting those of another.
-                    //
                     convertedImage->Save(filename.str().c_str());
+
+                    // Write this to socket.
 
                     cout << "Image saved at " << filename.str() << endl;
                 }
@@ -271,7 +256,7 @@ int PrintDeviceInfo(INodeMap & nodeMap)
 
 // This function acts as the body of the example; please see NodeMapInfo example
 // for more in-depth comments on setting up cameras.
-int RunSingleCamera(CameraPtr pCam)
+int RunSingleCamera(CameraPtr pCam, const sockaddr_un* pSocket)
 {
     int result = 0;
 
@@ -289,7 +274,7 @@ int RunSingleCamera(CameraPtr pCam)
         INodeMap & nodeMap = pCam->GetNodeMap();
 
         // Acquire images
-        result = result | AcquireImages(pCam, nodeMap, nodeMapTLDevice);
+        result = result | AcquireImages(pCam, nodeMap, nodeMapTLDevice, pSocket, 10);
 
         // Deinitialize camera
         pCam->DeInit();
@@ -342,7 +327,8 @@ int main(int /*argc*/, char** /*argv*/)
     struct sockaddr_un local, remote;
     char str[100];
 
-    if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    {
         perror("socket");
         exit(1);
     }
@@ -351,21 +337,28 @@ int main(int /*argc*/, char** /*argv*/)
     strcpy(local.sun_path, SOCK_PATH);
     unlink(local.sun_path);
     len = strlen(local.sun_path) + sizeof(local.sun_family);
-    if (bind(s, (struct sockaddr *)&local, len) == -1) {
+    if (bind(s, (struct sockaddr *)&local, len) == -1)
+    {
         perror("bind");
         exit(1);
     }
 
-    if (listen(s, 5) == -1) {
+#if 0
+    if (listen(s, 5) == -1)
+    {
         perror("listen");
         exit(1);
     }
 
-    for(;;) {
+    for(;;)
+    {
+
         int done, n;
         printf("Waiting for a connection...\n");
         socklen_t t = sizeof(remote);
-        if ((s2 = accept(s, (struct sockaddr *)&remote, &t)) == -1) {
+        if ((s2 = accept(s, (struct sockaddr *)&remote, &t)) == -1)
+        {
+            // Connection is made.
             perror("accept");
             exit(1);
         }
@@ -373,24 +366,29 @@ int main(int /*argc*/, char** /*argv*/)
         printf("Connected.\n");
 
         done = 0;
-        do {
+        do
+        {
             n = recv(s2, str, 100, 0);
-            if (n <= 0) {
+            if (n <= 0)
+            {
                 if (n < 0) perror("recv");
                 done = 1;
             }
 
-            if (!done) 
-                if (send(s2, str, n, 0) < 0) {
+            if (!done)
+                if (send(s2, str, n, 0) < 0)
+                {
                     perror("send");
                     done = 1;
                 }
-        } while (!done);
+        }
+        while (!done);
 
         close(s2);
-    } 
+    }
+#endif
 
-// Create shared pointer to camera
+    // Create shared pointer to camera
     //
     // *** NOTES ***
     // The CameraPtr object is a shared pointer, and will generally clean itself
@@ -412,7 +410,7 @@ int main(int /*argc*/, char** /*argv*/)
         cout << endl << "Running example for camera " << i << "..." << endl;
 
         // Run example
-        result = result | RunSingleCamera(pCam);
+        result = result | RunSingleCamera(pCam, &local);
 
         cout << "Camera " << i << " example complete..." << endl << endl;
     }
@@ -432,9 +430,7 @@ int main(int /*argc*/, char** /*argv*/)
 
     // Release system
     system->ReleaseInstance();
-
-    cout << endl << "Done! Press Enter to exit..." << endl;
-    getchar();
+    std::cout << "All done" << std::endl;
 
     return result;
 }

@@ -1,8 +1,9 @@
-"""socket.py: 
+""" The blinky socket.
 
 Communicate with socket.
 
 """
+from __future__ import print_function
     
 __author__           = "Me"
 __copyright__        = "Copyright 2016, Me"
@@ -17,10 +18,17 @@ import sys
 import os
 import socket 
 import random
+import time
 
 def main( ):
-    s = socket.socket( socket.AF_UNIX , socket.SOCK_STREAM )
-    s.connect( '/tmp/echo_socket' )
+    s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
+    while True:
+        if os.path.exists( '/tmp/echo_socket' ):
+            break
+        else:
+            time.sleep( 1 )
+            print( '.', end='')
+            sys.stdout.flush( )
     while True:
         s.send( random.random( ) )
 

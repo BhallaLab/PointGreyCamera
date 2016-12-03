@@ -21,12 +21,12 @@ message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${Boost_INCLUDE_PATHS} )
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
-#add_executable( acq ./src/main.cpp )
-#add_custom_command( TARGET acq POST_BUILD
-    #COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/config/ ${CMAKE_BINARY_DIR}/
-    #VERBATIM 
-    #)
-#target_link_libraries(acq ${SPINNAKER_LIB} ${Boost_LIBRARIES})
+add_executable( acq ./src/main.cpp )
+add_custom_command( TARGET acq POST_BUILD
+    COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/config/ ${CMAKE_BINARY_DIR}/
+    VERBATIM 
+   )
+target_link_libraries(acq ${SPINNAKER_LIB} ${Boost_LIBRARIES})
 
 
 enable_testing( )

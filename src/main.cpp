@@ -8,12 +8,73 @@
 #include <error.h>
 #include "Streamer.hpp"
 
-#define SOCK_PATH "blink"
+#define SOCK_PATH  "/tmp/socket_blinky"
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
 using namespace std;
+
+void sig_handler( int s )
+{
+    cout << "Got keyboard interrupt. Removing socket" << endl;
+    remove( SOCK_PATH );
+    exit( 1 );
+}
+
+void write_data( int socket )
+{
+    char buf[50] = "Heellow duniya waalo";
+    cout << "Writing some data" << endl;
+    int n = write( socket, (void *) buf,  10 );
+}
+
+int create_socket( )
+{
+    signal( SIGINT, sig_handler );
+    int s, s2, len;
+    struct sockaddr_un local, remote;
+    char str[100];
+
+    if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+        perror("socket");
+        exit(1);
+    }
+
+    local.sun_family = AF_UNIX;
+    strcpy(local.sun_path, SOCK_PATH);
+    
+    remove(local.sun_path);
+    len = strlen(local.sun_path) + sizeof(local.sun_family);
+    if (bind(s, (struct sockaddr *)&local, len) == -1) {
+        perror("bind");
+        exit(1);
+    }
+
+    if (listen(s, 5) == -1) {
+        perror("listen");
+        exit(1);
+    }
+
+
+    // There is no point continuing if there is not one to read the data.
+    while( true )
+    {
+        int done, n;
+        cout << "Waiting for a connection..." << endl;
+        socklen_t t = sizeof(remote);
+        if( (s2 = accept(s, (struct sockaddr *)&remote, &t)) == -1 )
+        {
+            perror("accept");
+            exit(1);
+        }
+
+        cout << "Connected." << endl;
+        break;
+    }
+    return s2;
+
+}
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap, INodeMap & nodeMapTLDevice
         , int socket

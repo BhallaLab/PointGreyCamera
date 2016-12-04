@@ -31,7 +31,6 @@ void sig_handler( int s )
 int write_data( int socket, void* data, int size )
 {
     int n = write( socket, data,  size );
-    return n;
 }
 
 int create_socket( )
@@ -127,6 +126,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
                 {
                     size_t width = pResultImage->GetWidth();
                     size_t height = pResultImage->GetHeight();
+                    //cout << "Width : " << width << " height : "<< height << endl;
                     size_t size = width * height;
                     void* data = pResultImage->GetData( );
                     total_frames_ += 1;

@@ -38,13 +38,14 @@ def main( ):
             time.sleep( 1 )
             print( '.', end='')
             sys.stdout.flush( )
+
+    # print( s.getsockopt( socket.SOL_SOCKET, socket.SO_SNDBUF ) )
     while True:
-        # Read data here.
-        data = s.recv( 10 * 1024 )
-        if not data:
-            print('no data' )
-            break
-        print( len(data ))
+        data = s.recv( 4096 * 20 )
+        # if not data:
+            # print('no data' )
+            # break
+        # print( len(data ))
 
 
 if __name__ == '__main__':

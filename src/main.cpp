@@ -121,8 +121,10 @@ int create_socket( bool waitfor_client = true )
 void show_image( void* data, size_t width, size_t height )
 {
     Mat img(height, width, CV_8UC1, data );
-    //imshow( "MyImg", img );
-    //waitKey( 10 );
+#if 0
+    imshow( "MyImg", img );
+    waitKey( 10 );
+#endif
 }
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )

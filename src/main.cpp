@@ -12,6 +12,7 @@
 using namespace std::chrono;
 
 #define SOCK_PATH  "/tmp/socket_blinky"
+#define BLOCK_SIZE  4096                        /* Block to write. */
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -28,9 +29,20 @@ void sig_handler( int s )
     exit( 1 );
 }
 
-int write_data( int socket, void* data, int size )
+int write_data( int socket, void* data, size_t size )
 {
-    int n = write( socket, data,  size );
+    size_t nBlocks = size / BLOCK_SIZE;
+    for (size_t i = 0; i < nBlocks; i++) 
+    {
+        void* buf = data + (i * BLOCK_SIZE);
+        if( write( socket, buf,  BLOCK_SIZE ) == -1 )
+        {
+            cout << "Failed to write to socket" << endl;
+            cout << "\tError was: " << strerror( errno ) << endl;
+            return -1;
+        }
+    }
+    return 0;
 }
 
 int create_socket( )
@@ -79,13 +91,14 @@ int create_socket( )
 
 }
 
-int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
-        , INodeMap & nodeMapTLDevice
-        , int socket , size_t numFrames = 100 )
+int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )
 {
     int result = 0;
     try
     {
+
+        auto startTime = system_clock::now();
+
         CEnumerationPtr ptrAcquisitionMode = nodeMap.GetNode("AcquisitionMode");
         if (!IsAvailable(ptrAcquisitionMode) || !IsWritable(ptrAcquisitionMode))
         {
@@ -117,7 +130,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
         if (IsAvailable(ptrStringSerial) && IsReadable(ptrStringSerial))
             deviceSerialNumber = ptrStringSerial->GetValue();
 
-        for (unsigned int imageCnt = 0; imageCnt < numFrames; imageCnt++)
+        while( true )
+        //for (unsigned int imageCnt = 0; imageCnt < numFrames; imageCnt++)
         {
             try
             {
@@ -128,16 +142,14 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
                     size_t height = pResultImage->GetHeight();
                     //cout << "Width : " << width << " height : "<< height << endl;
                     size_t size = width * height;
-                    void* data = pResultImage->GetData( );
                     total_frames_ += 1;
-                    int status = write_data( socket, data, size );
-                    if( status == -1 )
+                    write_data( socket, pResultImage->GetData( ), size);
+                    if( total_frames_ % 100 == 0 )
                     {
-                        std::cout << "Failed to write frame to socket " << std::endl;
-                        std::cout << "\tThe error was : " << strerror(errno) << std::endl;
+                        duration<double> elapsedSecs = system_clock::now( ) - startTime;
+                        double fps = ( float ) total_frames_ / elapsedSecs.count( );
+                        cout << "Running FPS : " << fps << endl;
                     }
-                    //else
-                        //cout << "Wrote " << size << " data" << endl;
                 }
             }
             catch (Spinnaker::Exception &e)
@@ -146,8 +158,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap
                 result = -1;
             }
         }
-    
-        cout << "End loop " << endl;
         pCam->EndAcquisition();
     }
     catch (Spinnaker::Exception &e)
@@ -230,15 +240,12 @@ int RunSingleCamera(CameraPtr pCam, int socket)
             cout << "Frame rate is " << fps_ << endl;
         }
 
-        auto start = system_clock::now( );
-        while( true )
-        {
-            int nFrames = 5 * floor( fps_ );
-            result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket, nFrames );
-            duration<double> elapsedSecs = system_clock::now( ) - start;
-            double fps = ( float ) total_frames_ / elapsedSecs.count( );
-            cout << "FPS : " << fps << endl;
-        }
+        //auto start = system_clock::now( );
+        //int nFrames = floor( fps_ );
+        result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket );
+        //duration<double> elapsedSecs = system_clock::now( ) - start;
+        //double fps = ( float ) total_frames_ / elapsedSecs.count( );
+        //cout << "FPS : " << fps << endl;
 
         // Deinitialize camera
         pCam->DeInit();
@@ -292,18 +299,10 @@ int main(int /*argc*/, char** /*argv*/)
 
     CameraPtr pCam = NULL;
 
-
-    while( true )
-    {
-        pCam = camList.GetByIndex( 0 );
-        if( pCam )
-            result = RunSingleCamera(pCam, client);
-        else
-            break;
-    }
+    pCam = camList.GetByIndex( 0 );
+    result = RunSingleCamera(pCam, client);
 
     pCam = NULL;
-
     // Clear camera list before releasing system
     camList.Clear();
 

@@ -190,10 +190,10 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     //cout << "H: "<< height << " W: " << width << " S: " << size << endl;
                     // Convert the image to Monochorme, 8 bits (1 byte) and send
                     // the output.
-                    auto img = pResultImage->Convert( PixelFormat_Mono8 );
+                    //auto img = pResultImage->Convert( PixelFormat_Mono8 );
 
 #ifdef TEST_WITH_CV2
-                    show_image( img->GetData( ), width, height );
+                    show_image( pResultImage->GetData( ), width, height );
 #else
                     write_data( img, size);
 #endif

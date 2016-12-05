@@ -20,6 +20,9 @@ using namespace cv;
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
 
+#define FRAME_HEIGHT        500
+#define FRAME_WIDTH         500
+
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
@@ -118,13 +121,19 @@ int create_socket( bool waitfor_client = true )
     return s2;
 }
 
+#if 0
+void configure_camera( CameraPtr pCam )
+{
+    cout << "Max width: " << pCam->Width << endl;
+    //cout << "Max height: " << pCam->Height.GetValue( ) << endl;
+}
+#endif
+
 void show_image( void* data, size_t width, size_t height )
 {
     Mat img(height, width, CV_8UC1, data );
-#if 0
     imshow( "MyImg", img );
     waitKey( 10 );
-#endif
 }
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )
@@ -290,6 +299,17 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         // Retrieve GenICam nodemap
         INodeMap & nodeMap = pCam->GetNodeMap();
 
+        // Set width, height etc.
+        CFloatPtr GainNode = nodeMap.GetNode("Gain");
+        float GainVal = GainNode->GetValue();
+        cout << "Gain is : " << GainVal << endl;
+
+        CIntegerPtr width = nodeMap.GetNode("Width");
+        width->SetValue( FRAME_WIDTH );
+
+        CIntegerPtr height = nodeMap.GetNode("Height");
+        height->SetValue( FRAME_HEIGHT );
+
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
         if (!IsAvailable(ptrAcquisitionFrameRate) || 
                 !IsReadable(ptrAcquisitionFrameRate)) 
@@ -349,18 +369,19 @@ int main(int /*argc*/, char** /*argv*/)
 
         // Release system_
         system_->ReleaseInstance();
-
         cout << "Not enough cameras!" << endl;
-        cout << "Done! Press Enter to exit..." << endl;
-        getchar();
-
         return -1;
     }
 
     CameraPtr pCam = NULL;
 
     pCam = cam_list_.GetByIndex( 0 );
+
+    // Configure camera here.
+    // configure_camera( pCam );
+
     result = RunSingleCamera(pCam, socket_);
+
 
     pCam = NULL;
     // Clear camera list before releasing system_

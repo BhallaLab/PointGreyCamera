@@ -121,29 +121,36 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
 
         // Set integer value from entry node as new value of enumeration node
         ptrAcquisitionMode->SetIntValue(acquisitionModeContinuous);
-        //cout << "Acquisition mode set to continuous..." << endl;
+        cout << "Acquisition mode set to continuous..." << endl;
 
         pCam->BeginAcquisition();
 
         gcstring deviceSerialNumber("");
         CStringPtr ptrStringSerial = nodeMapTLDevice.GetNode("DeviceSerialNumber");
         if (IsAvailable(ptrStringSerial) && IsReadable(ptrStringSerial))
+        {
             deviceSerialNumber = ptrStringSerial->GetValue();
+            cout << "Device serial number retrieved " << deviceSerialNumber 
+                << endl;
+        }
 
         while( true )
-        //for (unsigned int imageCnt = 0; imageCnt < numFrames; imageCnt++)
         {
             try
             {
                 ImagePtr pResultImage = pCam->GetNextImage();
-                if (! pResultImage->IsIncomplete() )
+                if ( pResultImage->IsIncomplete() ) /* Image is incomplete. */
+                {
+                    cout << "[WARN] Image incomplete with image status " << 
+                        pResultImage->GetImageStatus() << " ..." << endl;
+                }
+                else
                 {
                     size_t width = pResultImage->GetWidth();
                     size_t height = pResultImage->GetHeight();
-                    //cout << "Width : " << width << " height : "<< height << endl;
-                    size_t size = width * height;
+                    size_t size = pResultImage->GetBufferSize( );
                     total_frames_ += 1;
-                    write_data( socket, pResultImage->GetData( ), size);
+                    //write_data( socket, pResultImage->GetData( ), size);
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;

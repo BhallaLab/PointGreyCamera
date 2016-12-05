@@ -49,7 +49,6 @@ def main( ):
     # fcntl.fcntl( s, fcntl.F_SETFL, os.O_NONBLOCK )
     while True:
         try:
-            # socket.select( s )
             data = s.recv( 100 * 4096 )
             print( len(data) )
         except Exception as e:

@@ -145,6 +145,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
 
         auto startTime = system_clock::now();
 
+#if 1
         CEnumerationPtr ptrAcquisitionMode = nodeMap.GetNode("AcquisitionMode");
         if (!IsAvailable(ptrAcquisitionMode) || !IsWritable(ptrAcquisitionMode))
         {
@@ -168,6 +169,17 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
         // Set integer value from entry node as new value of enumeration node
         ptrAcquisitionMode->SetIntValue(acquisitionModeContinuous);
         cout << "Acquisition mode set to continuous..." << endl;
+
+        // Change the acquition frame rate.
+
+#else
+        // This section does not work.
+        CEnumerationPtr pAcquisitionMode = nodeMap.GetNode( "AcquisitionMode" );
+        pAcquisitionMode->SetIntValue( AcquisitionMode_MultiFrame );
+        CIntegerPtr pAcquitionFrameCount = nodeMap.GetNode( "AcquisitionBurstFrameCount" );
+        pAcquitionFrameCount->SetValue( 3 );
+        cout << "Frame per fetch " << pAcquitionFrameCount->GetValue( ) << endl;
+#endif
 
         pCam->BeginAcquisition();
 
@@ -310,7 +322,11 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         CIntegerPtr height = nodeMap.GetNode("Height");
         height->SetValue( FRAME_HEIGHT );
 
+        CBooleanPtr pAcquisitionManualFrameRate = nodeMap.GetNode( "AcquisitionFrameRateEnable" );
+        pAcquisitionManualFrameRate->SetValue( true );
+
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
+        ptrAcquisitionFrameRate->SetValue( 100.0 );
         if (!IsAvailable(ptrAcquisitionFrameRate) || 
                 !IsReadable(ptrAcquisitionFrameRate)) 
             cout << "Unable to retrieve frame rate. " << endl << endl;
@@ -319,6 +335,8 @@ int RunSingleCamera(CameraPtr pCam, int socket)
             fps_ = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
             cout << "Frame rate is " << fps_ << endl;
         }
+
+        // Set how many frames are to get in one go.
 
         result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket );
 

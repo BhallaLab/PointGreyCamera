@@ -8,6 +8,7 @@
 #include <error.h>
 #include "Streamer.hpp"
 #include <chrono>
+#include <exception>
 
 using namespace std::chrono;
 
@@ -20,22 +21,27 @@ using namespace Spinnaker::GenICam;
 using namespace std;
 
 int total_frames_ = 0;
+int socket_ = -1;                               /* Socket descriptor */
 float fps_ = 0.0;                               /* Frame per second. */
+
+SystemPtr system_;
+CameraList cam_list_;
 
 void sig_handler( int s )
 {
     cout << "Got keyboard interrupt. Removing socket" << endl;
+    close( socket_ );
+    throw runtime_error( "Ctrl+C pressed" );
     remove( SOCK_PATH );
-    exit( 1 );
 }
 
-int write_data( int socket, void* data, size_t size )
+int write_data( void* data, size_t size )
 {
     size_t nBlocks = size / BLOCK_SIZE;
     for (size_t i = 0; i < nBlocks; i++) 
     {
         void* buf = data + (i * BLOCK_SIZE);
-        if( write( socket, buf,  BLOCK_SIZE ) == -1 )
+        if( write( socket_, buf,  BLOCK_SIZE ) == -1 )
         {
             cout << "Failed to write to socket" << endl;
             cout << "\tError was: " << strerror( errno ) << endl;
@@ -47,7 +53,6 @@ int write_data( int socket, void* data, size_t size )
 
 int create_socket( )
 {
-    signal( SIGINT, sig_handler );
     int s, s2, len;
     struct sockaddr_un local, remote;
 
@@ -87,12 +92,15 @@ int create_socket( )
         cout << "Connected." << endl;
         break;
     }
-    return s2;
 
+    // Assign to global value.
+    socket_ = s2;
+    return s2;
 }
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )
 {
+    signal( SIGINT, sig_handler );
     int result = 0;
     try
     {
@@ -150,7 +158,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     size_t height = pResultImage->GetHeight();
                     size_t size = pResultImage->GetBufferSize( );
                     total_frames_ += 1;
-                    //write_data( socket, pResultImage->GetData( ), size);
+                    write_data( pResultImage->GetData( ), size);
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
@@ -158,6 +166,11 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                         cout << "Running FPS : " << fps << endl;
                     }
                 }
+            }
+            catch( runtime_error& e )
+            {
+                cout << "User pressed Ctrl+c" << endl;
+                break;
             }
             catch (Spinnaker::Exception &e)
             {
@@ -271,7 +284,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 int main(int /*argc*/, char** /*argv*/)
 {
     // Create socket 
-    int client = create_socket( );
+    socket_ = create_socket( );
 
     int result = 0;
 
@@ -279,23 +292,28 @@ int main(int /*argc*/, char** /*argv*/)
     cout << "Application build date: " << __DATE__ << " " << __TIME__ << endl << endl;
 
     // Retrieve singleton reference to system object
-    SystemPtr system = System::GetInstance();
+    system_ = System::GetInstance();
+    if( system_->IsInUse( ) )
+    {
+        cout << "Warn: Camera is already in use. Reattach and continue";
+        exit( -1 );
+    }
 
     // Retrieve list of cameras from the system
-    CameraList camList = system->GetCameras();
+    cam_list_ = system_->GetCameras();
 
-    unsigned int numCameras = camList.GetSize();
+    unsigned int numCameras = cam_list_.GetSize();
 
     cout << "Number of cameras detected: " << numCameras << endl << endl;
 
     // Finish if there are no cameras
     if (numCameras == 0)
     {
-        // Clear camera list before releasing system
-        camList.Clear();
+        // Clear camera list before releasing system_
+        cam_list_.Clear();
 
-        // Release system
-        system->ReleaseInstance();
+        // Release system_
+        system_->ReleaseInstance();
 
         cout << "Not enough cameras!" << endl;
         cout << "Done! Press Enter to exit..." << endl;
@@ -306,15 +324,19 @@ int main(int /*argc*/, char** /*argv*/)
 
     CameraPtr pCam = NULL;
 
-    pCam = camList.GetByIndex( 0 );
-    result = RunSingleCamera(pCam, client);
+    pCam = cam_list_.GetByIndex( 0 );
+    result = RunSingleCamera(pCam, socket_);
 
     pCam = NULL;
-    // Clear camera list before releasing system
-    camList.Clear();
+    // Clear camera list before releasing system_
+    cam_list_.Clear();
 
-    // Release system
-    system->ReleaseInstance();
+    // Release system_
+    system_->ReleaseInstance();
     std::cout << "All done" << std::endl;
+
+    if( socket_ > 0 )
+        close( socket_ );
+
     return 0;
 }

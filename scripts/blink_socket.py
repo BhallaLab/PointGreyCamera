@@ -38,7 +38,8 @@ def main( ):
                 s.connect( sock_name_ )
                 break
             except Exception as e:
-                pass
+                print( 'Error connecting %s' % e )
+                time.sleep( 1 )
         else:
             time.sleep( 1 )
             print( '.', end='')
@@ -50,7 +51,7 @@ def main( ):
     while True:
         try:
             data = s.recv( 100 * 4096 )
-            print( len(data) )
+            print( len(data) / 1024.0 )
         except Exception as e:
             err = e.args[0]
             if err == errno.EAGAIN or err == errno.EWOULDBLOCK:

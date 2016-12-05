@@ -9,8 +9,13 @@
 #include "Streamer.hpp"
 #include <chrono>
 #include <exception>
+#include <opencv2/highgui/highgui.hpp>
 
 using namespace std::chrono;
+
+#ifdef TEST_WITH_CV2 
+using namespace cv;
+#endif
 
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
@@ -35,23 +40,36 @@ void sig_handler( int s )
     remove( SOCK_PATH );
 }
 
+/**
+ * @brief Write data to socket.
+ *
+ * @param data
+ * @param size
+ *
+ * @return 
+ */
 int write_data( void* data, size_t size )
 {
+    // If socket_ is not set, don't try to write.
+    if( socket_ == 0 )
+        return 0;
+
+#if 0
     size_t nBlocks = size / BLOCK_SIZE;
     for (size_t i = 0; i < nBlocks; i++) 
     {
         void* buf = data + (i * BLOCK_SIZE);
         if( write( socket_, buf,  BLOCK_SIZE ) == -1 )
-        {
-            cout << "Failed to write to socket" << endl;
-            cout << "\tError was: " << strerror( errno ) << endl;
-            return -1;
-        }
+            throw runtime_error( strerror( errno ) );
     }
+#else
+    if( write( socket_, data,  size ) == -1 )
+        throw runtime_error( strerror( errno ) );
+#endif
     return 0;
 }
 
-int create_socket( )
+int create_socket( bool waitfor_client = true )
 {
     int s, s2, len;
     struct sockaddr_un local, remote;
@@ -80,6 +98,8 @@ int create_socket( )
     // There is no point continuing if there is not one to read the data.
     while( true )
     {
+        if( ! waitfor_client )
+            return 0;
         int done, n;
         cout << "Waiting for a connection..." << endl;
         socklen_t t = sizeof(remote);
@@ -96,6 +116,13 @@ int create_socket( )
     // Assign to global value.
     socket_ = s2;
     return s2;
+}
+
+void show_image( void* data, size_t width, size_t height )
+{
+    Mat img(height, width, CV_8UC1, data );
+    imshow( "MyImg", img );
+    waitKey( 10 );
 }
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )
@@ -147,6 +174,8 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
             try
             {
                 ImagePtr pResultImage = pCam->GetNextImage();
+                //cout << "Pixal format: " << pResultImage->GetPixelFormatName( ) << endl;
+
                 if ( pResultImage->IsIncomplete() ) /* Image is incomplete. */
                 {
                     cout << "[WARN] Image incomplete with image status " << 
@@ -158,7 +187,16 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     size_t height = pResultImage->GetHeight();
                     size_t size = pResultImage->GetBufferSize( );
                     total_frames_ += 1;
-                    write_data( pResultImage->GetData( ), size);
+                    //cout << "H: "<< height << " W: " << width << " S: " << size << endl;
+                    // Convert the image to Monochorme, 8 bits (1 byte) and send
+                    // the output.
+                    auto img = pResultImage->Convert( PixelFormat_Mono8 );
+
+#ifdef TEST_WITH_CV2
+                    show_image( img->GetData( ), width, height );
+#else
+                    write_data( img, size);
+#endif
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
@@ -260,12 +298,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
             cout << "Frame rate is " << fps_ << endl;
         }
 
-        //auto start = system_clock::now( );
-        //int nFrames = floor( fps_ );
         result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket );
-        //duration<double> elapsedSecs = system_clock::now( ) - start;
-        //double fps = ( float ) total_frames_ / elapsedSecs.count( );
-        //cout << "FPS : " << fps << endl;
 
         // Deinitialize camera
         pCam->DeInit();
@@ -284,7 +317,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 int main(int /*argc*/, char** /*argv*/)
 {
     // Create socket 
-    socket_ = create_socket( );
+    socket_ = create_socket( false );
 
     int result = 0;
 

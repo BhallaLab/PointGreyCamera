@@ -23,6 +23,12 @@ import random
 import time
 import fcntl, os
 import errno
+import cStringIO as StringIO
+import numpy as np
+import cv2
+
+img_ = np.zeros( shape=(1280, 1024), dtype=float )
+buf_ = img_.data
 
 sock_name_ = '/tmp/socket_blinky'
 
@@ -30,6 +36,7 @@ def poll_socket( ):
     return os.path.exists( sock_name_ )
 
 def main( ):
+    global img_, buf_
     s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
 
     while True:
@@ -48,10 +55,18 @@ def main( ):
     # print( s.getsockopt( socket.SOL_SOCKET, socket.SO_SNDBUF ) )
     # Make it non-blocking.
     # fcntl.fcntl( s, fcntl.F_SETFL, os.O_NONBLOCK )
+    totalBytesRead = 0
+    totalFrames = 0
+    buf = ''
     while True:
         try:
-            data = s.recv( 100 * 4096 )
-            print( len(data) / 1024.0 )
+            data = s.recv( 10 * 4096 )
+            buf += data
+            if len( buf) == 1024 * 1280:
+                img = np.frombuffer( buf, dtype=np.uint8 )
+                print( img )
+                buf = ''
+
         except Exception as e:
             err = e.args[0]
             if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
@@ -59,7 +74,7 @@ def main( ):
                 print( 'No data available' )
                 continue
             else:
-                print('No data' )
+                print('No data : %s' % e )
                 break
 
 if __name__ == '__main__':

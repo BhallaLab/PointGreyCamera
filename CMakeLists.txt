@@ -26,7 +26,7 @@ configure_file(
 
 
 # Directory to save recordings.
-execute_process( COMMAND date "%Y%B%d_%H%M%S"
+execute_process( COMMAND date +"%Y%B%d_%H%M%S"
     OUTPUT_VARIABLE TIMESTAMP
     OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -65,7 +65,7 @@ target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
 # Add a target RUN which should be the only target user should run.
 add_custom_target( run 
     bash ${CMAKE_SOURCE_DIR}/run.sh ${DATA_DIR}
-    WORKING_DIR ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIR ${CMAKE_BINARY_DIR}
     COMMENT "Main target to run aqcuisition"
     VERBATIM
     )

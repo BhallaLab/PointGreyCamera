@@ -24,6 +24,9 @@ if [ $# -lt 1 ]; then
     exit
 fi
 
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+
 TIMESTAMP=`date +"%Y%B%d_%H%M%S"`
 DATADIR="$1/$TIMESTAMP"
 if [ ! -d $DATADIR ]; then
@@ -75,7 +78,7 @@ sleep 1;
 
 # Now run python script to acquire data. If user press Ctrl+c to stop it, we
 # must send ctrl+c to PID acquition_from_point_grey app as well.
-python ./camera_client.py --data-dir ${DATADIR}
+python $SCRIPTPATH/camera_client.py --data-dir ${DATADIR}
 
 # If we have come here successfully, cleanup.
 kill_process( ${ACQ_PID} )

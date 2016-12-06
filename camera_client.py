@@ -47,9 +47,6 @@ frame_size_ = img_shape_[0] * img_shape_[1]
 max_frames_in_trial = 1200
 image_stack_ = None
 
-# Wheather to show frames or not while acquiring them from camera
-show_frames_ = Falsek
-
 args_ = None
 metadata_ = { 'acquisition_datetime' : [ ] }
 
@@ -129,7 +126,7 @@ def main( args ):
                 print( 'f', end='')
                 sys.stdout.flush( )
                 # print( img.shape, img.max(), img.min(), len(img) )
-                if show_frames_:
+                if args_.show_frames:
                     try:
                         cv2.imshow( 'img', img )
                         cv2.waitKey( 1 )
@@ -169,6 +166,12 @@ if __name__ == '__main__':
         , required = True
         , type = str
         , help = 'Where to store data?'
+        )
+    parser.add_argument('--show-frames', '-s'
+        , required = False
+        , default = True
+        , action = 'store_true'
+        , help = 'Whether to show frames while acquiring frames.'
         )
     class Args: pass 
     args = Args()

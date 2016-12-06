@@ -20,8 +20,8 @@ using namespace cv;
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
 
-#define FRAME_HEIGHT        500
-#define FRAME_WIDTH         500
+#define FRAME_HEIGHT       1024 / 2
+#define FRAME_WIDTH        1280 / 2
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -41,6 +41,44 @@ void sig_handler( int s )
     close( socket_ );
     throw runtime_error( "Ctrl+C pressed" );
     remove( SOCK_PATH );
+}
+
+// This function returns the camera to its default state by re-enabling automatic
+// exposure.
+int ResetExposure(INodeMap & nodeMap)
+{
+        int result = 0;
+        try
+        {
+                // 
+                // Turn automatic exposure back on
+                //
+                // *** NOTES ***
+                // Automatic exposure is turned on in order to return the camera to its 
+                // default state.
+                //
+                CEnumerationPtr ptrExposureAuto = nodeMap.GetNode("ExposureAuto");
+                if (!IsAvailable(ptrExposureAuto) || !IsWritable(ptrExposureAuto))
+                {
+                        cout << "Unable to enable automatic exposure (node retrieval). Non-fatal error..." << endl << endl;
+                        return -1;
+                }
+        
+                CEnumEntryPtr ptrExposureAutoContinuous = ptrExposureAuto->GetEntryByName("Continuous");
+                if (!IsAvailable(ptrExposureAutoContinuous) || !IsReadable(ptrExposureAutoContinuous))
+                {
+                        cout << "Unable to enable automatic exposure (enum entry retrieval). Non-fatal error..." << endl << endl;
+                        return -1;
+                }
+                ptrExposureAuto->SetIntValue(ptrExposureAutoContinuous->GetValue());
+                cout << "Automatic exposure enabled..." << endl << endl;
+        }
+        catch (Spinnaker::Exception &e)
+        {
+                cout << "Error: " << e.what() << endl;
+                result = -1;
+        }
+        return result;
 }
 
 /**
@@ -311,17 +349,14 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         // Retrieve GenICam nodemap
         INodeMap & nodeMap = pCam->GetNodeMap();
 
-        // Set width, height etc.
-        CFloatPtr GainNode = nodeMap.GetNode("Gain");
-        float GainVal = GainNode->GetValue();
-        cout << "Gain is : " << GainVal << endl;
-
+        // Set width, height
         CIntegerPtr width = nodeMap.GetNode("Width");
         width->SetValue( FRAME_WIDTH );
 
         CIntegerPtr height = nodeMap.GetNode("Height");
         height->SetValue( FRAME_HEIGHT );
 
+        // Set frame rate manually.
         CBooleanPtr pAcquisitionManualFrameRate = nodeMap.GetNode( "AcquisitionFrameRateEnable" );
         pAcquisitionManualFrameRate->SetValue( true );
 
@@ -336,9 +371,77 @@ int RunSingleCamera(CameraPtr pCam, int socket)
             cout << "Frame rate is " << fps_ << endl;
         }
 
-        // Set how many frames are to get in one go.
+        // Switch off auto-exposure and set it manually.
+        CEnumerationPtr ptrExposureAuto = nodeMap.GetNode("ExposureAuto");
+        if (!IsAvailable(ptrExposureAuto) || !IsWritable(ptrExposureAuto))
+        {
+            cout << "Unable to disable automatic exposure (node retrieval). Aborting..." << endl << endl;
+            return -1;
+        }
 
+        CEnumEntryPtr ptrExposureAutoOff = ptrExposureAuto->GetEntryByName("Off");
+        if (!IsAvailable(ptrExposureAutoOff) || !IsReadable(ptrExposureAutoOff))
+        {
+            cout << "Unable to disable automatic exposure (enum entry retrieval). Aborting..." << endl << endl;
+            return -1;
+        }
+
+        ptrExposureAuto->SetIntValue(ptrExposureAutoOff->GetValue());
+        cout << "Automatic exposure disabled..." << endl;
+        CFloatPtr ptrExposureTime = nodeMap.GetNode("ExposureTime");
+        if (!IsAvailable(ptrExposureTime) || !IsWritable(ptrExposureTime))
+        {
+            cout << "Unable to set exposure time. Aborting..." << endl << endl;
+            return -1;
+        }
+
+        // Ensure desired exposure time does not exceed the maximum
+        const double exposureTimeMax = ptrExposureTime->GetMax();
+
+        // 
+        double exposureTimeToSet = 5000.0;
+        if (exposureTimeToSet > exposureTimeMax)
+            exposureTimeToSet = exposureTimeMax;
+        ptrExposureTime->SetValue(exposureTimeToSet);
+        cout << "Exposure time set to " << exposureTimeToSet << " us..." << endl << endl;
+
+#if 1
+        // Turn of automatic gain
+        CEnumerationPtr ptrGainAuto = nodeMap.GetNode("GainAuto");
+        if (!IsAvailable(ptrGainAuto) || !IsWritable(ptrGainAuto))
+        {
+            cout << "Unable to disable automatic gain (node retrieval). Aborting..." << endl << endl;
+            return -1;
+        }
+        CEnumEntryPtr ptrGainAutoOff = ptrGainAuto->GetEntryByName("Off");
+        if (!IsAvailable(ptrGainAutoOff) || !IsReadable(ptrGainAutoOff))
+        {
+            cout << "Unable to disable automatic gain (enum entry retrieval). Aborting..." << endl << endl;
+            return -1;
+        }
+
+        // Set gain; gain recorded in decibels
+        CFloatPtr ptrGain = nodeMap.GetNode("Gain");
+        if (!IsAvailable(ptrGain) || !IsWritable(ptrGain))
+        {
+            cout << "WARNING **** Unable to set gain (node retrieval). Using default ..." << endl << endl;
+        }
+        else
+        {
+            double gainMax = ptrGain->GetMax();
+            double gainToSet = ptrGain->GetMin( );
+            ptrGain->SetValue(gainToSet);
+        }
+
+#endif
+
+        /*-----------------------------------------------------------------------------
+         *  IMAGE ACQUISITION
+         *-----------------------------------------------------------------------------*/
         result = AcquireImages(pCam, nodeMap, nodeMapTLDevice, socket );
+
+        // Reset settings.
+        ResetExposure( nodeMap );
 
         // Deinitialize camera
         pCam->DeInit();

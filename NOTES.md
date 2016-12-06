@@ -18,4 +18,5 @@ further to frame size does not improve it. Should I create a socket in RAM after
 mounting a slice of RAM in filesystem? No. It didn't help at all. The buffers
 are already in RAM.
 
+commit c48808e7e0b34185ec785e6c24464574650708a0 achieves 100 FPS.
 

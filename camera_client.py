@@ -35,11 +35,12 @@ with open( config_file, "r" ) as cf:
     configText = cf.read( )
     h = re.search( r'#define\s+FRAME_HEIGHT\s+(\d+)', configText ).group(1)
     w = re.search( r'#define\s+FRAME_WIDTH\s+(\d+)', configText ).group(1) 
-    sock = re.search( r'#define\s+SOCK_PATH\s+(\".+?\")', configText ).group(1) 
+    sock = re.search( r'#define\s+SOCK_PATH\s+\"(.+?)\"', configText ).group(1) 
     h, w = int(h), int(w)
     assert sock, "Can't read socket path from configuration file"
 
 sock_name_ = sock
+
 img_shape_ = ( h, w )
 frame_size_ = img_shape_[0] * img_shape_[1]
 
@@ -93,9 +94,8 @@ def main( ):
                 print( 'Error connecting %s' % e )
                 time.sleep( 1 )
         else:
+            print( 'Could not find %s' % sock_name_ )
             time.sleep( 1 )
-            print( '.', end='')
-            sys.stdout.flush( )
 
     # print( s.getsockopt( socket.SOL_SOCKET, socket.SO_SNDBUF ) )
     # Make it non-blocking.
@@ -152,4 +152,8 @@ def main( ):
             init_stack( )
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print( "User terminated" )
+        quit( 1 )

@@ -47,12 +47,20 @@ find_library( SPINNAKER_LIB Spinnaker
 message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
-add_executable( acquition_from_point_grey ./src/main.cpp )
-add_custom_command( TARGET acquition_from_point_grey POST_BUILD
+add_executable( cam_server ./src/main.cpp )
+add_custom_command( TARGET cam_server POST_BUILD
     COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}/
     VERBATIM 
    )
-target_link_libraries(acquition_from_point_grey ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
+target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
+
+# Add a target RUN which should be the only target user should run.
+add_custom_target( run 
+    bash -c ${CMAKE_SOURCE_DIR}/run.sh
+    COMMENT "Main target to run aqcuisition"
+    VERBATIM
+    )
+add_dependencies( run cam_server )
 
 
 enable_testing( )
@@ -61,5 +69,7 @@ add_executable( test-socket ${CMAKE_SOURCE_DIR}/tests/test_socket.cc )
 target_link_libraries( test-socket ${Boost_LIBRARIES} )
 
 add_test( test_socket test-socket )
+
+
 
 

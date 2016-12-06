@@ -120,6 +120,7 @@ int create_socket( bool waitfor_client = true )
     }
 
     local.sun_family = AF_UNIX;
+    cout << "[INFO] Creating socket " << SOCK_PATH << endl;
     strcpy(local.sun_path, SOCK_PATH);
     
     remove(local.sun_path);

@@ -1,11 +1,5 @@
-""" The blinky socket.
+#!/usr/bin/env python
 
-Communicate with socket.
-
-We read in non-blocking mode. If there is not data available on the socket, it
-does not mean the connection is terminated.
-
-"""
 from __future__ import print_function
     
 __author__           = "Dilawar Singh"
@@ -28,8 +22,25 @@ import numpy as np
 import cv2
 import threading
 import datetime
+import re
 
-img_shape_ = ( 1024/2, 1280/2 )
+script_dir = os.path.dirname( os.path.realpath( __file__ ) )
+config_file = os.path.join( script_dir, 'include', 'config.h' ) 
+if not os.path.isfile( config_file ):
+    print( "I can't find %s. Make sure it is available" % config_file )
+    print( " Did you run cmake? " )
+    quit( )
+
+with open( config_file, "r" ) as cf:
+    configText = cf.read( )
+    h = re.search( r'#define\s+FRAME_HEIGHT\s+(\d+)', configText ).group(1)
+    w = re.search( r'#define\s+FRAME_WIDTH\s+(\d+)', configText ).group(1) 
+    sock = re.search( r'#define\s+SOCK_PATH\s+(\".+?\")', configText ).group(1) 
+    h, w = int(h), int(w)
+    assert sock, "Can't read socket path from configuration file"
+
+sock_name_ = sock
+img_shape_ = ( h, w )
 frame_size_ = img_shape_[0] * img_shape_[1]
 
 max_frames_in_trial = 1200
@@ -64,7 +75,6 @@ def init_stack( ):
             , dtype = np.uint8
             )
 
-sock_name_ = '/tmp/socket_blinky'
 
 def poll_socket( ):
     return os.path.exists( sock_name_ )

@@ -44,7 +44,11 @@ void write_data( int socket )
 {
     char buf[50] = "Heellow duniya waalo";
     cout << "Writing some data" << endl;
-    int n = write( socket, (void *) buf,  10 );
+    if( -1 == write( socket, (void *) buf,  10 ) )
+    {
+        cout <<"[ERROR] Failed to write to socket" << endl;
+        cout << "\t Error was " << strerror( errno ) << endl;
+    }
 }
 
 int main(void)
@@ -52,7 +56,6 @@ int main(void)
     signal( SIGINT, sig_handler );
     int s, s2, len;
     struct sockaddr_un local, remote;
-    char str[100];
 
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket");
@@ -75,7 +78,7 @@ int main(void)
     }
 
     for(;;) {
-        int done, n;
+        int done;
         cout << "Waiting for a connection..." << endl;
         socklen_t t = sizeof(remote);
         if ((s2 = accept(s, (struct sockaddr *)&remote, &t)) == -1) {

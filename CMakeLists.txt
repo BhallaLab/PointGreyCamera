@@ -36,7 +36,7 @@ set(SPINNAKER_SRC_DIR ${CMAKE_SOURCE_DIR}/external)
 
 set(CMAKE_BUILD_TYPE Release)
 
-add_definitions( -std=c++11 -Wall )
+add_definitions( -std=c++11 -Wall -Wno-unknown-pragmas )
 #add_definitions( -DTEST_WITH_CV2 )
 
 find_library( SPINNAKER_LIB Spinnaker 
@@ -49,7 +49,7 @@ include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
 add_executable( acquition_from_point_grey ./src/main.cpp )
 add_custom_command( TARGET acquition_from_point_grey POST_BUILD
-    COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/config/ ${CMAKE_BINARY_DIR}/
+    COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}/
     VERBATIM 
    )
 target_link_libraries(acquition_from_point_grey ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )

@@ -1,6 +1,59 @@
 import cv2
 import numpy as np
 
+def get_ellipse(cnts):
+    ellipses = []
+    for cnt in cnts[0]:
+        try:
+            e = cv2.fitEllipse(cnt)
+            ellipses.append(e)
+        except: pass
+    return ellipses
+
+def merge_contours(cnts, img):
+    """Merge these contours together. And create an image"""
+    for c in cnts:
+        hull = cv2.convexHull(c)
+        cv2.fillConvexPoly(img, hull, 0)
+    return img
+
+def draw_stars(current, max_lim):
+    """Draw starts onto console as progress bar. Only if there is any change in
+    length.
+    """
+    global current_length_, max_length_
+    stride = int( max_lim / float(max_length_)) 
+    print('[DEBUG] Stride %s' % stride)
+    steps = int(current / float(stride))
+    if steps == current_length_:
+        return
+    current_length_ = steps
+    msg = "".join([ '*' for x in range(steps) ] + 
+            ['|' for x in range(max_length_-steps)]
+            )
+    print(msg)
+
+def accept_contour_as_possible_eye( contour, threshold = 0.1 ):
+    # The eye has a certain geometrical shape. If it can not be approximated by
+    # an ellipse which major/minor < 0.8, ignore it.
+    return True
+    if len(contour) < 5:
+        # Too tiny to be an eye
+        return True
+    ellipse = cv2.fitEllipse( contour )
+    axes = ellipse[1]
+    minor, major = axes
+    if minor / major > threshold:
+        # Cool, also the area of ellipse and contour area cannot ve very
+        # different.
+        cntArea = cv2.contourArea( contour )
+        ellipseArea = np.pi * minor * major 
+        if cntArea < 1:
+            return False
+        return True
+    else:
+        return False
+
 def process_frame(frame):
     # Find edge in frame
     s = np.mean(frame)

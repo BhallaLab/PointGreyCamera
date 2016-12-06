@@ -19,10 +19,25 @@ import extract
 import pylab
 import tifffile
 import numpy as np
+import helper
+import cv2
 
 def main( args ):
     # Extract video first
-    data = tifffile.imread( args['tiff_file'] )
+    frames = tifffile.imread( args['tiff_file'] )
+    tvec, vec, rawvec, data = [], [], [], []
+    fps = 100.0
+    for i, f in enumerate( frames ):
+        tvec.append( i * 1 / fps )
+        infile, outfile, res, s = helper.process_frame( f ) 
+        vec.append( res )
+        rawvec.append( s )
+        # This is to show what's going on
+        result = np.concatenate((infile, outfile), axis=1)
+        cv2.imshow( 'result', result )
+        cv2.waitKey( 1 )
+
+    data = np.array((tvec, vec, rawVec)).T
     edgyBlinks = extract.find_blinks_using_edge(data)
     outfile = "%s_blinks_using_edges.csv" % args['tiff_file']
     print("[INFO] Writing to outfile %s" % outfile)

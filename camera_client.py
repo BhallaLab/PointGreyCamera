@@ -47,6 +47,8 @@ frame_size_ = img_shape_[0] * img_shape_[1]
 max_frames_in_trial = 1200
 image_stack_ = None
 
+# Wheather to show frames or not while acquiring them from camera
+show_frames_ = Falsek
 
 args_ = None
 metadata_ = { 'acquisition_datetime' : [ ] }
@@ -127,11 +129,12 @@ def main( args ):
                 print( 'f', end='')
                 sys.stdout.flush( )
                 # print( img.shape, img.max(), img.min(), len(img) )
-                try:
-                    cv2.imshow( 'img', img )
-                    cv2.waitKey( 1 )
-                except Exception as e:
-                    pass
+                if show_frames_:
+                    try:
+                        cv2.imshow( 'img', img )
+                        cv2.waitKey( 1 )
+                    except Exception as e:
+                        pass
                 image_stack_[ framesInStack ] = img
                 metadata_[ 'acquisition_datetime' ].append( now )
                 framesInStack += 1

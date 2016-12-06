@@ -20,9 +20,10 @@ using namespace cv;
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
 
-#define FRAME_HEIGHT            1024
-#define FRAME_WIDTH             1280
-#define EXPOSURE_TIME_IN_US     2000
+#define FRAME_HEIGHT            1024/2
+#define FRAME_WIDTH             1280/2
+#define EXPOSURE_TIME_IN_US     5000
+#define EXPECTED_FPS            150
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -359,16 +360,16 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 
         // Set frame rate manually.
         CBooleanPtr pAcquisitionManualFrameRate = nodeMap.GetNode( "AcquisitionFrameRateEnable" );
-        pAcquisitionManualFrameRate->SetValue( false );
+        pAcquisitionManualFrameRate->SetValue( true );
 
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
-        ptrAcquisitionFrameRate->SetValue( 200.0 );
+        ptrAcquisitionFrameRate->SetValue( EXPECTED_FPS );
         if (!IsAvailable(ptrAcquisitionFrameRate) || !IsReadable(ptrAcquisitionFrameRate)) 
             cout << "Unable to retrieve frame rate. " << endl << endl;
         else
         {
             fps_ = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
-            cout << "[INFO] Frame rate is " << fps_ << endl;
+            cout << "[INFO] Expected frame set to " << fps_ << endl;
         }
 
         // Switch off auto-exposure and set it manually.

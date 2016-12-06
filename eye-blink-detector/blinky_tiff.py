@@ -51,21 +51,14 @@ def bounding_box( img, box ):
     c0, r0, w, h = box 
     return img[r0:r0+h, c0:c0+w]
 
-def animate( i, img ):
+def animate( i, frame ):
     global data_
     # global time_text_
-    global box_
     global tvec_, y1_, y2_
     t = float(i) / fps_
-    c0, r0, w, h = box_
-    if h < 0 or w < 0:
-        w, h = img.shape 
-        w, h = w-c0, h-r0
-        box_[2], box_[3]  = w, h
     
-    frame = bounding_box( img, box_ )
     inI, outI, edge, pixal = helper.process_frame(frame)
-    cv2.imshow('Eye', np.concatenate((frame, outI)))
+    cv2.imshow('Eye', np.hstack((frame, outI)))
     cv2.waitKey( 1 )
 
     tvec_.append(t); y1_.append(edge); y2_.append(pixal)
@@ -89,18 +82,25 @@ def animate( i, img ):
         pass
 
 def get_blinks( ):
-    global args_
-    global box_
-    box_ = [ int(x) for x in args_.box.split( ) ]
-    i = 0
+    global args_, box_
     frames = tifffile.imread( args_.tiff_file )
+    box_ = [ int(x) for x in args_.box.split( ) ]
+
+    c0, r0, w, h = box_
+    if h < 0 or w < 0:
+        h, w = frames[0].shape 
+        w, h = w-c0, h-r0
+        box_[2], box_[3]  = w, h
+
     for i, frame in enumerate( frames ):
+        frame = bounding_box( frame, box_ )
         animate( i, frame )
 
 def close_all( ):
     pass
 
 def main():
+    global box_
     get_blinks()
 
 if __name__ == '__main__':

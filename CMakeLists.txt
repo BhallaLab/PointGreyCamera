@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(Blinky)
 
+option(DO_ONLINE_PROCESSING "Done processing online" ON )
+
 set( SOCK_PATH "\"/tmp/eye_blink_socket\"" )
 
 # How many bytes should we write to socket in one go.
@@ -23,9 +25,15 @@ configure_file(
     )
 
 
+# Directory to save recordings.
+execute_process( COMMAND date "%Y%B%d_%H%M%S"
+    OUTPUT_VARIABLE TIMESTAMP
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+set( DATA_DIR "$ENV{HOME}/Desktop/BLINK_DEMO_RECORDING/")
+file(MAKE_DIRECTORY ${DATA_DIR})
 
 set( CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
-
 set( CMAKE_CXX_COMPILER g++ )
 set( CMAKE_C_COMPILER g++ )
 
@@ -56,7 +64,8 @@ target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
 
 # Add a target RUN which should be the only target user should run.
 add_custom_target( run 
-    bash -c ${CMAKE_SOURCE_DIR}/run.sh
+    bash ${CMAKE_SOURCE_DIR}/run.sh ${DATA_DIR}
+    WORKING_DIR ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Main target to run aqcuisition"
     VERBATIM
     )

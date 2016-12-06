@@ -22,6 +22,8 @@ import numpy as np
 import helper
 import cv2
 
+show_frames_ = False
+
 def main( args ):
     # Extract video first
     frames = tifffile.imread( args['tiff_file'] )
@@ -34,21 +36,22 @@ def main( args ):
         rawvec.append( s )
         # This is to show what's going on
         result = np.concatenate((infile, outfile), axis=1)
-        cv2.imshow( 'result', result )
-        cv2.waitKey( 1 )
+        if show_frames_:
+            cv2.imshow( 'result', result )
+            cv2.waitKey( 1 )
 
-    data = np.array((tvec, vec, rawVec)).T
-    edgyBlinks = extract.find_blinks_using_edge(data)
+    data = np.array((tvec, vec, rawvec)).T
+    edgyBlinks = extract.find_blinks_using_edge( data, plot = True)
     outfile = "%s_blinks_using_edges.csv" % args['tiff_file']
     print("[INFO] Writing to outfile %s" % outfile)
     np.savetxt(outfile, np.array(edgyBlinks).T, delimiter=","
             , header = "time,blinks")
 
-    pixalBlinks = extract.find_blinks_using_pixals(data)
-    outfile = "%s_blinks_using_pixals.csv" % args['tiff_file']
-    print("[INFO] Writing to outfile %s" % outfile)
-    np.savetxt(outfile, np.array(pixalBlinks).T, delimiter=","
-            , header = "time,blinks")
+    # pixalBlinks = extract.find_blinks_using_pixals(data)
+    # outfile = "%s_blinks_using_pixals.csv" % args['tiff_file']
+    # print("[INFO] Writing to outfile %s" % outfile)
+    # np.savetxt(outfile, np.array(pixalBlinks).T, delimiter=","
+    #         , header = "time,blinks")
 
 if __name__ == '__main__':
     import argparse

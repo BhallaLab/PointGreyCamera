@@ -17,6 +17,7 @@ __status__           = "Development"
 import numpy as np
 import pylab
 import sys
+import gnuplotlib as gp
 from collections import OrderedDict
 
 window_size_ = 7
@@ -113,6 +114,13 @@ def find_blinks_using_edge(data, plot = False, **kwargs):
         isBlink, a = get_blink(i, yy)
         if isBlink:
             blinks.append((i, a))
+
+        if plot:
+            blinks = [ (t[x], y) for x, y in blinks ]
+            x, y = zip( *blinks )
+            gp.plot( np.array(x), np.array( y )
+                    , terminal = 'x11', _with = 'points' 
+                    )
 
     xvec, yvec = [], []
     for i, x in sorted(blinks):

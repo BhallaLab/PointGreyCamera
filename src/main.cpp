@@ -20,8 +20,9 @@ using namespace cv;
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
 
-#define FRAME_HEIGHT       1024 / 2
-#define FRAME_WIDTH        1280 / 2
+#define FRAME_HEIGHT            1024
+#define FRAME_WIDTH             1280
+#define EXPOSURE_TIME_IN_US     2000
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -358,17 +359,16 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 
         // Set frame rate manually.
         CBooleanPtr pAcquisitionManualFrameRate = nodeMap.GetNode( "AcquisitionFrameRateEnable" );
-        pAcquisitionManualFrameRate->SetValue( true );
+        pAcquisitionManualFrameRate->SetValue( false );
 
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
-        ptrAcquisitionFrameRate->SetValue( 100.0 );
-        if (!IsAvailable(ptrAcquisitionFrameRate) || 
-                !IsReadable(ptrAcquisitionFrameRate)) 
+        ptrAcquisitionFrameRate->SetValue( 200.0 );
+        if (!IsAvailable(ptrAcquisitionFrameRate) || !IsReadable(ptrAcquisitionFrameRate)) 
             cout << "Unable to retrieve frame rate. " << endl << endl;
         else
         {
             fps_ = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
-            cout << "Frame rate is " << fps_ << endl;
+            cout << "[INFO] Frame rate is " << fps_ << endl;
         }
 
         // Switch off auto-exposure and set it manually.
@@ -398,12 +398,8 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         // Ensure desired exposure time does not exceed the maximum
         const double exposureTimeMax = ptrExposureTime->GetMax();
 
-        // 
-        double exposureTimeToSet = 5000.0;
-        if (exposureTimeToSet > exposureTimeMax)
-            exposureTimeToSet = exposureTimeMax;
-        ptrExposureTime->SetValue(exposureTimeToSet);
-        cout << "Exposure time set to " << exposureTimeToSet << " us..." << endl << endl;
+        ptrExposureTime->SetValue( EXPOSURE_TIME_IN_US );
+        cout << "Exposure time set to " << ptrExposureTime->GetValue( ) << " us..." << endl << endl;
 
 #if 1
         // Turn of automatic gain
@@ -424,7 +420,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         CFloatPtr ptrGain = nodeMap.GetNode("Gain");
         if (!IsAvailable(ptrGain) || !IsWritable(ptrGain))
         {
-            cout << "WARNING **** Unable to set gain (node retrieval). Using default ..." << endl << endl;
+            cout << "[WARN] Unable to set gain (node retrieval). Using default ..." << endl;
         }
         else
         {

@@ -1,16 +1,38 @@
 cmake_minimum_required(VERSION 2.8)
 project(Blinky)
+
+set( SOCK_PATH "\"/tmp/eye_blink_socket\"" )
+
+# How many bytes should we write to socket in one go.
+# This is deprecated. We write whole frame in one go
+set( BLOCK_SIZE 4096 )
+
+# NOTICE: Following values are optimized to achive FPS of 100. If you are changing them,
+# do it at your own risk.
+set( FRAME_HEIGHT  512 )
+set( FRAME_WIDTH  640)
+# Exposure time in micro-seconds")
+set( EXPOSURE_TIME_IN_US  2000)
+# What frame rate do you want? Camera may not honour this if FPS is higher 
+# than its capacity
+set( EXPECTED_FPS 100 )
+
+# Write the configuration file.
+configure_file( 
+    ${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h 
+    )
+
+
+
 set( CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
 set( CMAKE_CXX_COMPILER g++ )
 set( CMAKE_C_COMPILER g++ )
 
-find_package( Boost REQUIRED )
-find_package( Boost REQUIRED COMPONENTS system thread )
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-set(SPINNAKER_SRC_DIR ${CMAKE_SOURCE_DIR}/spinnaker_1_0_0_270_amd64)
+set(SPINNAKER_SRC_DIR ${CMAKE_SOURCE_DIR}/external)
 
 set(CMAKE_BUILD_TYPE Release)
 
@@ -23,7 +45,6 @@ find_library( SPINNAKER_LIB Spinnaker
     )
 
 message(STATUS "Found ${SPINNAKER_LIB}")
-include_directories( ${Boost_INCLUDE_PATHS} )
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
 add_executable( acq ./src/main.cpp )
@@ -31,7 +52,7 @@ add_custom_command( TARGET acq POST_BUILD
     COMMAND rsync -azv --progress ${CMAKE_SOURCE_DIR}/config/ ${CMAKE_BINARY_DIR}/
     VERBATIM 
    )
-target_link_libraries(acq ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(acq ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
 
 
 enable_testing( )

@@ -40,6 +40,9 @@ data_dir_ = 'videos_/%s' % now
 
 metadata_ = { 'acquisition_datetime' : [ ] }
 
+# When True, put a small text on each frame.
+write_timestamp_ = True
+
 if not os.path.isdir( data_dir_ ):
     os.makedirs( data_dir_ )
 
@@ -100,15 +103,21 @@ def main( ):
             if len( buf) >= frame_size_:
                 img = np.frombuffer( buf[:frame_size_], dtype = np.uint8 )
                 img = np.reshape( img, img_shape_ )
+                now = datetime.datetime.now().isoformat( ) 
+                if write_timestamp_:
+                    cv2.putText( img, now, (0, 10)
+                            , cv2.FONT_HERSHEY_SIMPLEX, 0.4, 0, 1
+                            )
                 print( 'f', end='')
                 sys.stdout.flush( )
                 # print( img.shape, img.max(), img.min(), len(img) )
-                cv2.imshow( 'img', img )
-                cv2.waitKey( 1 )
+                try:
+                    cv2.imshow( 'img', img )
+                    cv2.waitKey( 1 )
+                except Exception as e:
+                    pass
                 image_stack_[ framesInStack ] = img
-                metadata_[ 'acquisition_datetime' ].append( 
-                        datetime.datetime.now().isoformat( ) 
-                                )
+                metadata_[ 'acquisition_datetime' ].append( now )
                 framesInStack += 1
                 buf = buf[frame_size_:]
             else:

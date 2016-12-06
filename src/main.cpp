@@ -11,16 +11,11 @@
 #include <exception>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "config.h"
+
 using namespace std::chrono;
 using namespace cv;
 
-#define SOCK_PATH  "/tmp/socket_blinky"
-#define BLOCK_SIZE  4096                        /* Block to write. */
-
-#define FRAME_HEIGHT            1024/2
-#define FRAME_WIDTH             1280/2
-#define EXPOSURE_TIME_IN_US     5000
-#define EXPECTED_FPS            100
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -38,8 +33,8 @@ void sig_handler( int s )
 {
     cout << "Got keyboard interrupt. Removing socket" << endl;
     close( socket_ );
-    throw runtime_error( "Ctrl+C pressed" );
     remove( SOCK_PATH );
+    throw runtime_error( "Ctrl+C pressed" );
 }
 
 // This function returns the camera to its default state by re-enabling automatic
@@ -101,8 +96,15 @@ int write_data( void* data, size_t width, size_t height )
     imshow( "MyImg", img );
     waitKey( 10 );
 #else
-    if( write( socket_, data,  width * height ) == -1 )
-        throw runtime_error( strerror( errno ) );
+    try 
+    {
+        if( write( socket_, data,  width * height ) == -1 )
+            throw runtime_error( strerror( errno ) );
+    } 
+    catch ( exception & e )
+    {
+        throw runtime_error( "Error in writing" );
+    }
 #endif
     return 0;
 }

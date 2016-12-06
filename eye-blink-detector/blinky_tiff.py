@@ -26,8 +26,8 @@ import tifffile
 
 data_ = np.zeros(shape=(1,3))
 cap_ = None
-box_ = [(0,0), (-1,-1) ]
 fps_ = 0.0
+box_ = None
 
 axes_ = {}
 lines_ = {}
@@ -47,14 +47,23 @@ def update_axis_limits(ax, x, y):
     if y >= ylims[1]:
         ax.set_ylim(ylims[0], y+1)
 
+def bounding_box( img, box ):
+    c0, r0, w, h = box 
+    return img[r0:r0+h, c0:c0+w]
+
 def animate( i, img ):
     global data_
     # global time_text_
     global box_
     global tvec_, y1_, y2_
     t = float(i) / fps_
-    frame = img
-
+    c0, r0, w, h = box_
+    if h < 0 or w < 0:
+        w, h = img.shape 
+        w, h = w-c0, h-r0
+        box_[2], box_[3]  = w, h
+    
+    frame = bounding_box( img, box_ )
     inI, outI, edge, pixal = helper.process_frame(frame)
     cv2.imshow('Eye', np.concatenate((frame, outI)))
     cv2.waitKey( 1 )
@@ -70,14 +79,19 @@ def animate( i, img ):
             print('[WARN] Failed to detect blink data using egdes in frame %s' % i)
             tA, bA = [0], [0]
 
-    gplt.plot(
-            (np.array(tvec_[-1000:]), np.array( y1_[-1000:] ))
-            , title = 'Blink detection. Running window 1000 frames'
-            , terminal = 'x11'
-            )
+    try:
+        gplt.plot(
+                (np.array(tvec_[-1000:]), np.array( y1_[-1000:] ))
+                , title = 'Blink detection. Running window 1000 frames'
+                , terminal = 'x11'
+                )
+    except Exception as e:
+        pass
 
 def get_blinks( ):
     global args_
+    global box_
+    box_ = [ int(x) for x in args_.box.split( ) ]
     i = 0
     frames = tifffile.imread( args_.tiff_file )
     for i, frame in enumerate( frames ):
@@ -87,7 +101,6 @@ def close_all( ):
     pass
 
 def main():
-    global data_, args_
     get_blinks()
 
 if __name__ == '__main__':
@@ -99,6 +112,11 @@ if __name__ == '__main__':
         , required = True
         , type = str
         , help = 'Tiff file of recording.'
+        )
+    parser.add_argument('--box', '-b'
+        , required = False
+        , default = '0 0 -1 -1'
+        , help = 'bounding box: x0 y0 widht height'
         )
     class Args: pass 
     args = Args()

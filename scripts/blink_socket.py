@@ -27,8 +27,9 @@ import cStringIO as StringIO
 import numpy as np
 import cv2
 
-img_ = np.zeros( shape=(1280, 1024), dtype=float )
-buf_ = img_.data
+
+img_shape_ = ( 1280/2, 1024/2 )
+frame_size_ = img_shape_[0] * img_shape_[1]
 
 sock_name_ = '/tmp/socket_blinky'
 
@@ -60,12 +61,17 @@ def main( ):
     buf = ''
     while True:
         try:
-            data = s.recv( 10 * 4096 )
+            data = s.recv( frame_size_ )
             buf += data
-            if len( buf) == 1024 * 1280:
-                img = np.frombuffer( buf, dtype=np.uint8 )
-                print( img )
-                buf = ''
+            if len( buf) >= frame_size_:
+                img = np.frombuffer( buf[:frame_size_], dtype = np.uint8 )
+                img = np.reshape( img, img_shape_ )
+                print( img.shape, img.max(), img.min(), len(img) )
+                # cv2.imshow( 'img', img )
+                # cv2.waitKey( 1 )
+                buf = buf[frame_size_:]
+            else:
+                pass
 
         except Exception as e:
             err = e.args[0]

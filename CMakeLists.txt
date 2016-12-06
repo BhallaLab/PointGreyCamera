@@ -15,7 +15,7 @@ set(SPINNAKER_SRC_DIR ${CMAKE_SOURCE_DIR}/spinnaker_1_0_0_270_amd64)
 set(CMAKE_BUILD_TYPE Release)
 
 add_definitions( -std=c++11 -Wall )
-add_definitions( -DTEST_WITH_CV2 )
+#add_definitions( -DTEST_WITH_CV2 )
 
 find_library( SPINNAKER_LIB Spinnaker 
     PATHS ${SPINNAKER_SRC_DIR}/lib

@@ -12,10 +12,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 using namespace std::chrono;
-
-#ifdef TEST_WITH_CV2 
 using namespace cv;
-#endif
 
 #define SOCK_PATH  "/tmp/socket_blinky"
 #define BLOCK_SIZE  4096                        /* Block to write. */
@@ -23,7 +20,7 @@ using namespace cv;
 #define FRAME_HEIGHT            1024/2
 #define FRAME_WIDTH             1280/2
 #define EXPOSURE_TIME_IN_US     5000
-#define EXPECTED_FPS            150
+#define EXPECTED_FPS            100
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -91,22 +88,20 @@ int ResetExposure(INodeMap & nodeMap)
  *
  * @return 
  */
-int write_data( void* data, size_t size )
+int write_data( void* data, size_t width, size_t height )
 {
     // If socket_ is not set, don't try to write.
     if( socket_ == 0 )
         return 0;
 
-#if 0
-    size_t nBlocks = size / BLOCK_SIZE;
-    for (size_t i = 0; i < nBlocks; i++) 
-    {
-        void* buf = data + (i * BLOCK_SIZE);
-        if( write( socket_, buf,  BLOCK_SIZE ) == -1 )
-            throw runtime_error( strerror( errno ) );
-    }
+    Mat img(height, width, CV_8UC1, data );
+    data = img.data;
+
+#ifdef TEST_WITH_CV
+    imshow( "MyImg", img );
+    waitKey( 10 );
 #else
-    if( write( socket_, data,  size ) == -1 )
+    if( write( socket_, data,  width * height ) == -1 )
         throw runtime_error( strerror( errno ) );
 #endif
     return 0;
@@ -169,12 +164,6 @@ void configure_camera( CameraPtr pCam )
 }
 #endif
 
-void show_image( void* data, size_t width, size_t height )
-{
-    Mat img(height, width, CV_8UC1, data );
-    imshow( "MyImg", img );
-    waitKey( 10 );
-}
 
 int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevice , int socket )
 {
@@ -255,11 +244,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     // the output.
                     //auto img = pResultImage->Convert( PixelFormat_Mono8 );
 
-#ifdef TEST_WITH_CV2
-                    show_image( pResultImage->GetData( ), width, height );
-#else
-                    write_data( img, size);
-#endif
+                    write_data( pResultImage->GetData( ), width, height );
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
@@ -457,7 +442,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 int main(int /*argc*/, char** /*argv*/)
 {
     // Create socket 
-    socket_ = create_socket( false );
+    socket_ = create_socket( true );
 
     int result = 0;
 

@@ -25,7 +25,7 @@ import datetime
 import re
 
 script_dir = os.path.dirname( os.path.realpath( __file__ ) )
-config_file = os.path.join( script_dir, 'include', 'config.h' ) 
+config_file = os.path.join( script_dir, 'config.h' ) 
 if not os.path.isfile( config_file ):
     print( "I can't find %s. Make sure it is available" % config_file )
     print( " Did you run cmake? " )

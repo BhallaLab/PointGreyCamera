@@ -19,7 +19,7 @@ set( EXPECTED_FPS 100 )
 
 # Write the configuration file.
 configure_file( 
-    ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/config.h 
+    ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h 
     )
 
 
@@ -48,17 +48,26 @@ message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 add_executable( cam_server ./src/main.cpp )
+
+# After building the server, copy required client and configuration files into
+# current binary directory.
 add_custom_command( 
     TARGET cam_server POST_BUILD
-    COMMAND rsync -azv --progress 
-        ${CMAKE_CURRENT_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}/
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/camera_client.py ${CMAKE_BINARY_DIR}
+    # Copy config.h file as well. The client uses this to setup
+    # parameters.
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.h ${CMAKE_BINARY_DIR}/
     VERBATIM 
    )
 target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
 set_target_properties( cam_server 
-    PROPERTIES 
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
 # Add a target RUN which should be the only target user should run.
@@ -66,10 +75,9 @@ add_custom_target( run
     DEPENDS cam_server
     COMMAND bash -c ${CMAKE_CURRENT_SOURCE_DIR}/run.sh
     COMMENT "Main target to run aqcuisition"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     VERBATIM
     )
-
 
 enable_testing( )
 

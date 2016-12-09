@@ -15,7 +15,7 @@ set( FRAME_WIDTH  640)
 set( EXPOSURE_TIME_IN_US  2000)
 # What frame rate do you want? Camera may not honour this if FPS is higher 
 # than its capacity
-set( EXPECTED_FPS 100 )
+set( EXPECTED_FPS 200 )
 
 # Write the configuration file.
 configure_file( 
@@ -30,7 +30,14 @@ set( CMAKE_CXX_COMPILER g++ )
 set( CMAKE_C_COMPILER g++ )
 
 find_package( OpenCV REQUIRED )
+find_package( PkgConfig REQUIRED )
+
 include_directories( ${OpenCV_INCLUDE_DIRS} )
+
+
+pkg_search_module(LIBNOTIFY REQUIRED libnotify)
+include_directories( ${LIBNOTIFY_INCLUDE_DIRS} )
+
 
 set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -51,8 +58,7 @@ add_executable( cam_server ./src/main.cpp )
 
 # After building the server, copy required client and configuration files into
 # current binary directory.
-add_custom_command( 
-    TARGET cam_server POST_BUILD
+add_custom_command( TARGET cam_server POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -62,22 +68,24 @@ add_custom_command(
     # Copy config.h file as well. The client uses this to setup
     # parameters.
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/config.h ${CMAKE_BINARY_DIR}/
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.h ${CMAKE_BINARY_DIR}
     VERBATIM 
    )
-target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
+target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} 
+    ${LIBNOTIFY_LIBRARIES}
+    )
 set_target_properties( cam_server 
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-# Add a target RUN which should be the only target user should run.
-add_custom_target( run  
-    DEPENDS cam_server
-    COMMAND bash -c ${CMAKE_CURRENT_SOURCE_DIR}/run.sh
-    COMMENT "Main target to run aqcuisition"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    VERBATIM
-    )
+## Add a target RUN which should be the only target user should run.
+#add_custom_target( run  
+#    DEPENDS cam_server
+#    COMMAND bash -c ${CMAKE_CURRENT_SOURCE_DIR}/run.sh
+#    COMMENT "Main target to run aqcuisition"
+#    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#    VERBATIM
+#    )
 
 enable_testing( )
 

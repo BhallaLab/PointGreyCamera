@@ -10,6 +10,7 @@
 #include <chrono>
 #include <exception>
 #include <opencv2/highgui/highgui.hpp>
+#include <libnotify/notify.h>
 
 #include "config.h"
 
@@ -28,6 +29,10 @@ float fps_ = 0.0;                               /* Frame per second. */
 
 SystemPtr system_;
 CameraList cam_list_;
+
+#ifdef LIBNOTIFY
+NotifyNotification * pNotice = nullptr;
+#endif
 
 void sig_handler( int s )
 {
@@ -224,8 +229,17 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                 << endl;
         }
 
+
+        char notification[100] = "running ..";
         while( true )
         {
+
+#if  LIBNOTIFY
+            notify_notification_update( pNotice, "Camera Server", notification, NULL );
+            notify_notification_set_timeout( pNotice, 100 );
+            notify_notification_show( pNotice, NULL );
+#endif     /* -----  LIBNOTIFY  ----- */
+
             try
             {
                 ImagePtr pResultImage = pCam->GetNextImage();
@@ -246,7 +260,7 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     // Convert the image to Monochorme, 8 bits (1 byte) and send
                     // the output.
                     //auto img = pResultImage->Convert( PixelFormat_Mono8 );
-
+                    sprintf( notification, "total frames : %d", total_frames_ );
                     write_data( pResultImage->GetData( ), width, height );
                     if( total_frames_ % 100 == 0 )
                     {
@@ -351,7 +365,16 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         pAcquisitionManualFrameRate->SetValue( true );
 
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
-        ptrAcquisitionFrameRate->SetValue( EXPECTED_FPS );
+
+        try {
+            ptrAcquisitionFrameRate->SetValue( EXPECTED_FPS );
+        }
+        catch ( std::exception & e )
+        {
+            cout << "Failed to set frame rate. Using default ... " << endl;
+            cout << "\tError was " << e.what( ) << endl;
+
+        }
         if (!IsAvailable(ptrAcquisitionFrameRate) || !IsReadable(ptrAcquisitionFrameRate)) 
             cout << "Unable to retrieve frame rate. " << endl << endl;
         else
@@ -445,7 +468,7 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 int main(int /*argc*/, char** /*argv*/)
 {
     // Create socket 
-    socket_ = create_socket( true );
+    notify_init( "Camera Server" );
 
     int result = 0;
 
@@ -475,17 +498,26 @@ int main(int /*argc*/, char** /*argv*/)
 
         // Release system_
         system_->ReleaseInstance();
-        cout << "Not enough cameras!" << endl;
+        cout << "Not enough cameras! Existing ..." << endl;
         return -1;
     }
 
     CameraPtr pCam = NULL;
 
+    // Since there are enough camera lets initialize socket to write acquired
+    // frames.
+#if  LIBNOTIFY
+    pNotice = notify_notification_new( "Camera Server", "Initializing socket", NULL );
+    notify_notification_set_timeout( pNotice, 100 );
+    notify_notification_show( pNotice, nullptr );
+#endif     /* -----  LIBNOTIFY  ----- */
+
+    socket_ = create_socket( true );
+
     pCam = cam_list_.GetByIndex( 0 );
 
     // Configure camera here.
     // configure_camera( pCam );
-
     result = RunSingleCamera(pCam, socket_);
 
 
@@ -499,6 +531,11 @@ int main(int /*argc*/, char** /*argv*/)
 
     if( socket_ > 0 )
         close( socket_ );
+
+#if  LIBNOTIFY
+    if( notify_is_initted( ) )
+        notify_uninit( );
+#endif     /* -----  LIBNOTIFY  ----- */
 
     return 0;
 }

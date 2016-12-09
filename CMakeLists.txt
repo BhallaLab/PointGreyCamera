@@ -33,10 +33,12 @@ find_package( PkgConfig REQUIRED )
 
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-
-pkg_search_module(LIBNOTIFY REQUIRED libnotify)
-include_directories( ${LIBNOTIFY_INCLUDE_DIRS} )
-
+set(USE_LIBNOTIFY TRUE)
+if(USE_LIBNOTIFY)
+    pkg_search_module(LIBNOTIFY REQUIRED libnotify)
+    include_directories( ${LIBNOTIFY_INCLUDE_DIRS} )
+    add_definitions( -DLIBNOTIFY )
+endif( )
 
 set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -51,7 +53,7 @@ find_library( SPINNAKER_LIB Spinnaker
 
 message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include )
 add_executable( cam_server ./src/main.cpp )
 
 # After building the server, copy required client and configuration files into
@@ -60,35 +62,22 @@ add_custom_command( TARGET cam_server POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/camera_config_xml/ ${CMAKE_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${CMAKE_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/camera_client.py ${CMAKE_BINARY_DIR}
-    # Copy config.h file as well. The client uses this to setup
-    # parameters.
-    COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_SOURCE_DIR}/config.h ${CMAKE_BINARY_DIR}
     VERBATIM 
    )
-target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} 
-    ${LIBNOTIFY_LIBRARIES}
-    )
+target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
+if(USE_LIBNOTIFY)
+    target_link_libraries( cam_server ${LIBNOTIFY_LIBRARIES})
+endif( USE_LIBNOTIFY )
+
 set_target_properties( cam_server 
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-## Add a target RUN which should be the only target user should run.
-#add_custom_target( run  
-#    DEPENDS cam_server
-#    COMMAND bash -c ${CMAKE_CURRENT_SOURCE_DIR}/run.sh
-#    COMMENT "Main target to run aqcuisition"
-#    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#    VERBATIM
-#    )
-
 enable_testing( )
 
 add_executable( test-socket ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_socket.cc )
-target_link_libraries( test-socket ${Boost_LIBRARIES} )
+target_link_libraries( test-socket )
 
 add_test( test_socket test-socket )
 

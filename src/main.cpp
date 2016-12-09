@@ -10,7 +10,10 @@
 #include <chrono>
 #include <exception>
 #include <opencv2/highgui/highgui.hpp>
+
+#ifdef LIBNOTIFY
 #include <libnotify/notify.h>
+#endif
 
 #include "config.h"
 
@@ -260,13 +263,20 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     // Convert the image to Monochorme, 8 bits (1 byte) and send
                     // the output.
                     //auto img = pResultImage->Convert( PixelFormat_Mono8 );
-                    sprintf( notification, "total frames : %d", total_frames_ );
+#ifdef LIBNOTIFY
+                    sprintf( notification, "Total frames : %d, FPS: %.2f"
+                            , total_frames_, fps_
+                            );
+#endif
                     write_data( pResultImage->GetData( ), width, height );
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
-                        double fps = ( float ) total_frames_ / elapsedSecs.count( );
-                        cout << "Running FPS : " << fps << endl;
+                        fps_ = ( float ) total_frames_ / elapsedSecs.count( );
+#ifdef LIBNOTIFY
+#else
+                        cout << "Running FPS : " << fps_ << endl;
+#endif
                     }
                 }
             }

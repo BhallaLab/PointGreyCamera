@@ -367,14 +367,15 @@ int RunSingleCamera(CameraPtr pCam, int socket)
         CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
 
         try {
+            cout << "Trying to set frame rate to " << EXPECTED_FPS << endl;
             ptrAcquisitionFrameRate->SetValue( EXPECTED_FPS );
         }
         catch ( std::exception & e )
         {
             cout << "Failed to set frame rate. Using default ... " << endl;
             cout << "\tError was " << e.what( ) << endl;
-
         }
+
         if (!IsAvailable(ptrAcquisitionFrameRate) || !IsReadable(ptrAcquisitionFrameRate)) 
             cout << "Unable to retrieve frame rate. " << endl << endl;
         else

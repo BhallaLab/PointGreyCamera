@@ -8,7 +8,8 @@ set( SOCK_PATH "\"/tmp/eye_blink_socket\"" )
 set( BLOCK_SIZE 4096 )
 
 # NOTICE: Following values are optimized to achive FPS of 100. If you are changing them,
-# do it at your own risk.
+# do it at your own risk. These values replaces macros in config.h.in file in
+# PointGrey submodule.
 set( FRAME_HEIGHT  512 )
 set( FRAME_WIDTH  640)
 # Exposure time in micro-seconds")
@@ -21,8 +22,6 @@ set( EXPECTED_FPS 200 )
 configure_file( 
     ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h 
     )
-
-
 
 set( CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
@@ -44,7 +43,6 @@ set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 set(CMAKE_BUILD_TYPE Release)
 
 add_definitions( -std=c++11 -Wall -Wno-unknown-pragmas )
-#add_definitions( -DTEST_WITH_CV2 )
 
 find_library( SPINNAKER_LIB Spinnaker 
     PATHS ${SPINNAKER_SRC_DIR}/lib

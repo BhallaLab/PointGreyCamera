@@ -20,7 +20,8 @@
 #define  Arduino_INC
 
 #include <string>
-#include  "serial/serial.h"
+#include <memory>
+#include  <boost/asio.hpp>
 
 using namespace std;
 
@@ -43,6 +44,7 @@ class Arduino
         /* ====================  MUTATORS      ======================================= */
 
         /* ====================  OPERATORS     ======================================= */
+        void check( )
 
     protected:
         /* ====================  METHODS       ======================================= */
@@ -53,7 +55,8 @@ class Arduino
         /* ====================  METHODS       ======================================= */
 
         /* ====================  DATA MEMBERS  ======================================= */
-        serial::Serial* pSerial_;
+
+        unique_ptr<boost::asio::serial_port> pSerial_;
 
 
 }; /* -----  end of class Arduino  ----- */

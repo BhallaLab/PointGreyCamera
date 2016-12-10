@@ -18,8 +18,9 @@
 
 #include "Arduino.hh"
 #include <boost/log/trivial.hpp>
-#include "serial/serial.h"
+#include <boost/asio/serial_port.hpp>
 
+namespace asio = boost::asio;
 
 /*
  *--------------------------------------------------------------------------------------
@@ -28,11 +29,15 @@
  * Description:  constructor
  *--------------------------------------------------------------------------------------
  */
-Arduino::Arduino ( string name, int port )
+Arduino::Arduino ( string port, int baudrate )
 {
     BOOST_LOG_TRIVIAL( trace ) << "Connecting to arduino" ;
-    pSerial_ = new serial::Serial( name, port,  serial::Timeout::simpleTimeout( 1000 ) );
-    if( pSerial_->isOpen( ) )
+    asio::io_service io;
+    pSerial_ = unique_ptr<asio::serial_port>( new asio::serial_port( io ) );
+    pSerial_->open( port );
+    pSerial_->set_option( asio::serial_port_base::baud_rate( baudrate ) );
+
+    if( pSerial_->is_open( ) )
         BOOST_LOG_TRIVIAL ( info ) << "Serial port is open ..";
     else
         BOOST_LOG_TRIVIAL ( warning ) << "Could not open serial port ..";
@@ -48,8 +53,14 @@ Arduino::Arduino ( string name, int port )
 Arduino::~Arduino ()
 {
     BOOST_LOG_TRIVIAL ( info ) << " Arduino said bye bye .." ;
-    if( pSerial_ )
-        delete pSerial_;
+    if( pSerial_->is_open( ) )
+        pSerial_->close( );
 }  /* -----  end of method Arduino::~Arduino  (destructor)  ----- */
 
-
+/**
+ * @brief Check if arduino is sending valid output.
+ */
+void Arduino::check( )
+{
+    
+}

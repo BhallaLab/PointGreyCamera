@@ -20,6 +20,8 @@
 #define  Arduino_INC
 
 #include <string>
+#include  "serial/serial.h"
+
 using namespace std;
 
 /*
@@ -51,6 +53,8 @@ class Arduino
         /* ====================  METHODS       ======================================= */
 
         /* ====================  DATA MEMBERS  ======================================= */
+        serial::Serial* pSerial_;
+
 
 }; /* -----  end of class Arduino  ----- */
 

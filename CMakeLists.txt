@@ -1,6 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
 project(Blinky)
 
+include(ExternalProject)
+
+# libserial project. Build it before cam_server is built.
+set( SERIAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/_serial )
+file( MAKE_DIRECTORY ${SERIAL_INSTALL_DIR} )
+ExternalProject_Add( libserial
+   PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/serial
+   SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/serial
+   CONFIGURE_COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${SERIAL_INSTALL_DIR}
+   BUILD_COMMAND $(MAKE)
+   INSTALL_COMMAND $(MAKE) install
+   BUILD_IN_SOURCE TRUE
+) 
+
+include_directories(${SERIAL_INSTALL_DIR}/include)
+link_directories(${SERIAL_INSTALL_DIR}/lib)
+set(SERIAL_LIBS ${SERIAL_INSTALL_DIR}/lib/libserial.so )
+
 option( WITH_ARDUNIO_CLIENT "Use C++ arduino client" TRUE)
 
 set( SOCK_PATH "\"/tmp/eye_blink_socket\"" )
@@ -27,9 +45,6 @@ configure_file(
 
 set( CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
-set( CMAKE_CXX_COMPILER g++ )
-set( CMAKE_C_COMPILER g++ )
-
 find_package( OpenCV REQUIRED )
 find_package( PkgConfig REQUIRED )
 
@@ -53,10 +68,16 @@ find_library( SPINNAKER_LIB Spinnaker
 message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
 add_executable( cam_server 
     ./src/main.cpp 
     ./src/Arduino.cc 
+    ./src/PtrGreyCamera.cc
     )
+
+if( WITH_ARDUNIO_CLIENT )
+    add_dependencies( cam_server libserial )
+endif( WITH_ARDUNIO_CLIENT )
 
 # After building the server, copy required client and configuration files into
 # current binary directory.
@@ -70,7 +91,7 @@ add_custom_command( TARGET cam_server POST_BUILD
 target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
 
 if( WITH_ARDUNIO_CLIENT )
-    target_link_libraries( cam_server ${Boost_LIBRARIES} )
+    target_link_libraries( cam_server ${Boost_LIBRARIES} ${SERIAL_LIBS} )
 endif( WITH_ARDUNIO_CLIENT )
 
 set_target_properties( cam_server 

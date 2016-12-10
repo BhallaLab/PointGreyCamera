@@ -39,7 +39,7 @@ endif( )
 
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
+set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spinnaker)
 
 set(CMAKE_BUILD_TYPE Release)
 

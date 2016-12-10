@@ -11,10 +11,6 @@
 #include <exception>
 #include <opencv2/highgui/highgui.hpp>
 
-#ifdef LIBNOTIFY
-#include <libnotify/notify.h>
-#endif
-
 #include "config.h"
 
 using namespace std::chrono;
@@ -33,9 +29,6 @@ float fps_ = 0.0;                               /* Frame per second. */
 SystemPtr system_;
 CameraList cam_list_;
 
-#ifdef LIBNOTIFY
-NotifyNotification * pNotice = nullptr;
-#endif
 
 void sig_handler( int s )
 {
@@ -236,13 +229,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
         char notification[100] = "running ..";
         while( true )
         {
-
-#if  LIBNOTIFY
-            notify_notification_update( pNotice, "Camera Server", notification, NULL );
-            notify_notification_set_timeout( pNotice, 100 );
-            notify_notification_show( pNotice, NULL );
-#endif     /* -----  LIBNOTIFY  ----- */
-
             try
             {
                 ImagePtr pResultImage = pCam->GetNextImage();
@@ -263,20 +249,12 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     // Convert the image to Monochorme, 8 bits (1 byte) and send
                     // the output.
                     //auto img = pResultImage->Convert( PixelFormat_Mono8 );
-#ifdef LIBNOTIFY
-                    sprintf( notification, "Total frames : %d, FPS: %.2f"
-                            , total_frames_, fps_
-                            );
-#endif
                     write_data( pResultImage->GetData( ), width, height );
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
                         fps_ = ( float ) total_frames_ / elapsedSecs.count( );
-#ifdef LIBNOTIFY
-#else
                         cout << "Running FPS : " << fps_ << endl;
-#endif
                     }
                 }
             }
@@ -478,9 +456,6 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 // comments on preparing and cleaning up the system.
 int main(int /*argc*/, char** /*argv*/)
 {
-    // Create socket 
-    notify_init( "Camera Server" );
-
     int result = 0;
 
     // Print application build information
@@ -517,11 +492,6 @@ int main(int /*argc*/, char** /*argv*/)
 
     // Since there are enough camera lets initialize socket to write acquired
     // frames.
-#if  LIBNOTIFY
-    pNotice = notify_notification_new( "Camera Server", "Initializing socket", NULL );
-    notify_notification_set_timeout( pNotice, 100 );
-    notify_notification_show( pNotice, nullptr );
-#endif     /* -----  LIBNOTIFY  ----- */
 
     socket_ = create_socket( true );
 
@@ -542,11 +512,6 @@ int main(int /*argc*/, char** /*argv*/)
 
     if( socket_ > 0 )
         close( socket_ );
-
-#if  LIBNOTIFY
-    if( notify_is_initted( ) )
-        notify_uninit( );
-#endif     /* -----  LIBNOTIFY  ----- */
 
     return 0;
 }

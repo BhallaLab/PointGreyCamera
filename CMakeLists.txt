@@ -33,12 +33,6 @@ find_package( PkgConfig REQUIRED )
 
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-set(USE_LIBNOTIFY TRUE)
-if(USE_LIBNOTIFY)
-    pkg_search_module(LIBNOTIFY REQUIRED libnotify)
-    include_directories( ${LIBNOTIFY_INCLUDE_DIRS} )
-    add_definitions( -DLIBNOTIFY )
-endif( )
 
 set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -66,9 +60,6 @@ add_custom_command( TARGET cam_server POST_BUILD
     VERBATIM 
    )
 target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
-if(USE_LIBNOTIFY)
-    target_link_libraries( cam_server ${LIBNOTIFY_LIBRARIES})
-endif( USE_LIBNOTIFY )
 
 set_target_properties( cam_server 
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}

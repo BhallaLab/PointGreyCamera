@@ -47,22 +47,25 @@ frame_size_ = img_shape_[0] * img_shape_[1]
 max_frames_in_trial = 1200
 image_stack_ = None
 
-now = datetime.datetime.now().isoformat( )
-data_dir_ = 'videos_/%s' % now 
-
+args_ = None
 metadata_ = { 'acquisition_datetime' : [ ] }
 
 # When True, put a small text on each frame.
 write_timestamp_ = True
 
-if not os.path.isdir( data_dir_ ):
-    os.makedirs( data_dir_ )
+def initialize( args ):
+    global args_
+    args_ = args
+    if not os.path.exists( args_.data_dir ):
+        print( '[INFO] Creating %s' % args_.data_dir )
+        os.makedirs( args_.data_dir )
 
 def save_img_stack( index ):
     import tifffile
     global metadata_ 
     global image_stack_ 
-    filename = os.path.join( data_dir_, 'stack_%03d.tif' % index )
+    global args_
+    filename = os.path.join( args.data_dir, 'stack_%03d.tif' % index )
     tifffile.imsave( filename, image_stack_, metadata = metadata_ )
     print( '[INFO] Saved to %s' % filename )
 
@@ -80,11 +83,13 @@ def init_stack( ):
 def poll_socket( ):
     return os.path.exists( sock_name_ )
 
-def main( ):
+def main( args ):
     global img_, buf_
     global image_stack_
-    s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
 
+    initialize( args )
+
+    s = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
     while True:
         if os.path.exists( sock_name_ ):
             try:
@@ -121,11 +126,12 @@ def main( ):
                 print( 'f', end='')
                 sys.stdout.flush( )
                 # print( img.shape, img.max(), img.min(), len(img) )
-                try:
-                    cv2.imshow( 'img', img )
-                    cv2.waitKey( 1 )
-                except Exception as e:
-                    pass
+                if args_.show_frames:
+                    try:
+                        cv2.imshow( 'img', img )
+                        cv2.waitKey( 1 )
+                    except Exception as e:
+                        pass
                 image_stack_[ framesInStack ] = img
                 metadata_[ 'acquisition_datetime' ].append( now )
                 framesInStack += 1
@@ -152,8 +158,27 @@ def main( ):
             init_stack( )
 
 if __name__ == '__main__':
+    import argparse
+    # Argument parser.
+    description = '''Camera client for PointGrey camera'''
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--data-dir', '-d'
+        , required = True
+        , type = str
+        , help = 'Where to store data?'
+        )
+    parser.add_argument('--show-frames', '-s'
+        , required = False
+        , default = True
+        , action = 'store_true'
+        , help = 'Whether to show frames while acquiring frames.'
+        )
+    class Args: pass 
+    args = Args()
+    parser.parse_args(namespace=args)
+
     try:
-        main()
+        main( args )
     except KeyboardInterrupt:
         print( "User terminated" )
         quit( 1 )

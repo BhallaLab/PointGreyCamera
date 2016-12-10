@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(Blinky)
 
+option( WITH_ARDUNIO_CLIENT "Use C++ arduino client" TRUE)
+
 set( SOCK_PATH "\"/tmp/eye_blink_socket\"" )
 
 # How many bytes should we write to socket in one go.
@@ -31,20 +33,17 @@ set( CMAKE_C_COMPILER g++ )
 find_package( OpenCV REQUIRED )
 find_package( PkgConfig REQUIRED )
 
-include_directories( ${OpenCV_INCLUDE_DIRS} )
-
-set(USE_LIBNOTIFY TRUE)
-if(USE_LIBNOTIFY)
-    pkg_search_module(LIBNOTIFY REQUIRED libnotify)
-    include_directories( ${LIBNOTIFY_INCLUDE_DIRS} )
-    add_definitions( -DLIBNOTIFY )
+if( WITH_ARDUNIO_CLIENT )
+    find_package( Boost COMPONENTS system program_options log filesystem atomic REQUIRED )
 endif( )
+
+include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 set(SPINNAKER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
 set(CMAKE_BUILD_TYPE Release)
 
-add_definitions( -std=c++11 -Wall -Wno-unknown-pragmas )
+add_definitions( -std=c++11 -Wall -Wno-unknown-pragmas -DBOOST_LOG_DYN_LINK )
 
 find_library( SPINNAKER_LIB Spinnaker 
     PATHS ${SPINNAKER_SRC_DIR}/lib
@@ -54,7 +53,10 @@ find_library( SPINNAKER_LIB Spinnaker
 message(STATUS "Found ${SPINNAKER_LIB}")
 include_directories( ${SPINNAKER_SRC_DIR} ${SPINNAKER_SRC_DIR}/include )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include )
-add_executable( cam_server ./src/main.cpp )
+add_executable( cam_server 
+    ./src/main.cpp 
+    ./src/Arduino.cc 
+    )
 
 # After building the server, copy required client and configuration files into
 # current binary directory.
@@ -66,9 +68,10 @@ add_custom_command( TARGET cam_server POST_BUILD
     VERBATIM 
    )
 target_link_libraries(cam_server ${SPINNAKER_LIB} ${OpenCV_LIBRARIES} )
-if(USE_LIBNOTIFY)
-    target_link_libraries( cam_server ${LIBNOTIFY_LIBRARIES})
-endif( USE_LIBNOTIFY )
+
+if( WITH_ARDUNIO_CLIENT )
+    target_link_libraries( cam_server ${Boost_LIBRARIES} )
+endif( WITH_ARDUNIO_CLIENT )
 
 set_target_properties( cam_server 
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}

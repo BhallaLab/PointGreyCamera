@@ -10,17 +10,18 @@
 #include <chrono>
 #include <exception>
 #include <opencv2/highgui/highgui.hpp>
+#include <boost/program_options.hpp> 
 
-#ifdef LIBNOTIFY
-#include <libnotify/notify.h>
-#endif
+#include <boost/log/trivial.hpp>
+#define BOOST_LOG_DYN_LINK 1
+
+#include "Arduino.hh"
+
 
 #include "config.h"
 
 using namespace std::chrono;
 using namespace cv;
-
-
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
@@ -32,10 +33,6 @@ float fps_ = 0.0;                               /* Frame per second. */
 
 SystemPtr system_;
 CameraList cam_list_;
-
-#ifdef LIBNOTIFY
-NotifyNotification * pNotice = nullptr;
-#endif
 
 void sig_handler( int s )
 {
@@ -237,12 +234,6 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
         while( true )
         {
 
-#if  LIBNOTIFY
-            notify_notification_update( pNotice, "Camera Server", notification, NULL );
-            notify_notification_set_timeout( pNotice, 100 );
-            notify_notification_show( pNotice, NULL );
-#endif     /* -----  LIBNOTIFY  ----- */
-
             try
             {
                 ImagePtr pResultImage = pCam->GetNextImage();
@@ -263,20 +254,14 @@ int AcquireImages(CameraPtr pCam, INodeMap & nodeMap , INodeMap & nodeMapTLDevic
                     // Convert the image to Monochorme, 8 bits (1 byte) and send
                     // the output.
                     //auto img = pResultImage->Convert( PixelFormat_Mono8 );
-#ifdef LIBNOTIFY
-                    sprintf( notification, "Total frames : %d, FPS: %.2f"
-                            , total_frames_, fps_
-                            );
-#endif
                     write_data( pResultImage->GetData( ), width, height );
+
+                    // Compure FPS after every 100 frames.
                     if( total_frames_ % 100 == 0 )
                     {
                         duration<double> elapsedSecs = system_clock::now( ) - startTime;
                         fps_ = ( float ) total_frames_ / elapsedSecs.count( );
-#ifdef LIBNOTIFY
-#else
                         cout << "Running FPS : " << fps_ << endl;
-#endif
                     }
                 }
             }
@@ -476,10 +461,69 @@ int RunSingleCamera(CameraPtr pCam, int socket)
 
 // Example entry point; please see Enumeration example for more in-depth
 // comments on preparing and cleaning up the system.
-int main(int /*argc*/, char** /*argv*/)
+int main(int argc, char* argv[] )
 {
-    // Create socket 
-    notify_init( "Camera Server" );
+
+    
+    /*-----------------------------------------------------------------------------
+     *  Handle program options here.
+     *-----------------------------------------------------------------------------*/
+    namespace po = boost::program_options;
+    po::variables_map vm;
+
+    try {
+        po::options_description desc( "Arduino + Camera client" );
+
+        desc.add_options( )
+            ( "help", "produce help message" )
+            ( "port", po::value<string>(), "Serial port to read from" )
+            ( "name", po::value<string>(), "Name of the animal" )
+            ( "session_num", po::value<int>(), "Session number" )
+            ( "session_type", po::value<int>(), "Session type" )
+            ;
+        po::store( po::parse_command_line( argc, argv, desc), vm );
+        po::notify( vm );
+
+        if (vm.count("help") ) {
+            cout << desc;
+            return 0;
+        }
+
+        if ( ! (
+                    vm.count( "port") && vm.count( "name" ) 
+                    && vm.count( "session_num" ) && vm.count( "session_type" ) 
+               )
+           )
+        {
+            cout << "[ERROR] One or more required arguments are missing " << endl;
+            cout << desc << endl;
+            return 0;
+        }
+    } catch ( exception& e ) {
+        cerr << "Error : " << e.what( ) << endl;
+        return 1;
+    }
+
+    
+    /*-----------------------------------------------------------------------------
+     *  Step 1: Poll for serial port for sometime. If connection can not be made
+     *  quit. Otherwise, we need to launch a parallel process which reads from
+     *  termnal to send commands to arduino.
+     *-----------------------------------------------------------------------------*/
+
+    try 
+    {
+        Arduino arduino( vm[ "port" ].as<string>(), 38400 );
+        BOOST_LOG_TRIVIAL( info ) << "Connected to arduino";
+        BOOST_LOG_TRIVIAL( trace ) << " Launching a thread to read user input ";
+    }
+    catch ( exception& e )
+    {
+        BOOST_LOG_TRIVIAL( error ) << "I could not connected to arduino";
+        BOOST_LOG_TRIVIAL( error ) << e.what( );
+        return 1;
+    }
+
 
     int result = 0;
 
@@ -515,13 +559,8 @@ int main(int /*argc*/, char** /*argv*/)
 
     CameraPtr pCam = NULL;
 
-    // Since there are enough camera lets initialize socket to write acquired
+    // Since there are enough camera lets initialize socket to write ar
     // frames.
-#if  LIBNOTIFY
-    pNotice = notify_notification_new( "Camera Server", "Initializing socket", NULL );
-    notify_notification_set_timeout( pNotice, 100 );
-    notify_notification_show( pNotice, nullptr );
-#endif     /* -----  LIBNOTIFY  ----- */
 
     socket_ = create_socket( true );
 
@@ -543,10 +582,6 @@ int main(int /*argc*/, char** /*argv*/)
     if( socket_ > 0 )
         close( socket_ );
 
-#if  LIBNOTIFY
-    if( notify_is_initted( ) )
-        notify_uninit( );
-#endif     /* -----  LIBNOTIFY  ----- */
 
     return 0;
 }
